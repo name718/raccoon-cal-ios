@@ -1,6 +1,10 @@
-# 浣熊卡路里 (RaccoonCal)
-
-一个基于iOS原生技术的智能卡路里管理应用，通过拍照识别食物卡路里，结合虚拟宠物养成和社交功能，让健康管理变得有趣。
+<div align="center">
+  <img src="logo.png" alt="RaccoonCal Logo" width="120" height="120">
+  
+  # 浣熊卡路里 (RaccoonCal)
+  
+  一个基于iOS原生技术的智能卡路里管理应用，通过拍照识别食物卡路里，结合虚拟宠物养成和社交功能，让健康管理变得有趣。
+</div>
 
 ## 🦝 项目特色
 
