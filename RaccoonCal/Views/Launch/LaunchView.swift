@@ -14,27 +14,21 @@ struct LaunchView: View {
     
     var body: some View {
         if isActive {
-            MainTabView()
+            WelcomeView()
         } else {
             ZStack {
-                // 背景渐变
-                LinearGradient(
-                    gradient: Gradient(colors: [
-                        Color(red: 0.2, green: 0.8, blue: 0.6),
-                        Color(red: 0.1, green: 0.6, blue: 0.8)
-                    ]),
-                    startPoint: .topLeading,
-                    endPoint: .bottomTrailing
-                )
-                .ignoresSafeArea()
+                // 背景渐变 - 使用主题色
+                AppTheme.gradientPrimary
+                    .ignoresSafeArea()
                 
                 VStack(spacing: 30) {
                     // Logo区域
                     VStack(spacing: 20) {
-                        // 浣熊图标 (使用系统图标作为占位符)
-                        Image(systemName: "pawprint.circle.fill")
-                            .font(.system(size: 80))
-                            .foregroundColor(.white)
+                        // 浣熊Logo
+                        Image("Logo")
+                            .resizable()
+                            .scaledToFit()
+                            .frame(width: 120, height: 120)
                             .scaleEffect(logoScale)
                             .opacity(logoOpacity)
                         

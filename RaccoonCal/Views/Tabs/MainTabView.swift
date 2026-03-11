@@ -40,7 +40,7 @@ struct MainTabView: View {
                     Text("我的")
                 }
         }
-        .accentColor(.green) // Tab选中时的颜色
+        .accentColor(AppTheme.primary) // Tab选中时的颜色
     }
 }
 
