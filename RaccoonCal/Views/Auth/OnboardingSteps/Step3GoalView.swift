@@ -18,7 +18,7 @@ struct Step3GoalView: View {
             Spacer()
             
             // 浣熊举着路牌
-            Image("Logo")
+            Image("RaccoonGoals")
                 .resizable()
                 .scaledToFit()
                 .frame(width: 100, height: 100)

@@ -20,7 +20,7 @@ struct WelcomeView: View {
                     
                     // Logo和标题
                     VStack(spacing: 20) {
-                        Image("Logo")
+                        Image("RaccoonWelcome")
                             .resizable()
                             .scaledToFit()
                             .frame(width: 120, height: 120)

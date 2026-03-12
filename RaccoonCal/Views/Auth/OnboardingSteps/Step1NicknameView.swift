@@ -17,7 +17,7 @@ struct Step1NicknameView: View {
             Spacer()
             
             // 浣熊挥手
-            Image("Logo")
+            Image("RaccoonGreeting")
                 .resizable()
                 .scaledToFit()
                 .frame(width: 120, height: 120)

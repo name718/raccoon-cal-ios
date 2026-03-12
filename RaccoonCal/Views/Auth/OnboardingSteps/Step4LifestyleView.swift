@@ -21,7 +21,7 @@ struct Step4LifestyleView: View {
         VStack(spacing: 30) {
             Spacer()
             
-            Image("Logo")
+            Image("RaccoonLifestyle")
                 .resizable()
                 .scaledToFit()
                 .frame(width: 100, height: 100)

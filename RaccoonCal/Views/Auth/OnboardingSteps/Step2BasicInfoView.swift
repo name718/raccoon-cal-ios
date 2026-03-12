@@ -20,7 +20,7 @@ struct Step2BasicInfoView: View {
             Spacer()
             
             // 浣熊拿着尺子和秤
-            Image("Logo")
+            Image("RaccoonMeasuring")
                 .resizable()
                 .scaledToFit()
                 .frame(width: 100, height: 100)

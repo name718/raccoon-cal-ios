@@ -26,7 +26,7 @@ struct Step5CompleteView: View {
             Spacer()
             
             // 浣熊
-            Image("Logo")
+            Image(isGenerating ? "RaccoonLoading" : "RaccoonSuccess")
                 .resizable()
                 .scaledToFit()
                 .frame(width: 120, height: 120)

@@ -19,7 +19,7 @@ struct LoginView: View {
                 Spacer()
                 
                 // Logo
-                Image("Logo")
+                Image("RaccoonThinking")
                     .resizable()
                     .scaledToFit()
                     .frame(width: 80, height: 80)
