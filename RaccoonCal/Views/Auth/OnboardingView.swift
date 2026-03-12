@@ -43,7 +43,7 @@ struct OnboardingView: View {
                         
                         // 进度条
                         HStack(spacing: 4) {
-                            ForEach(0..<5, id: \.self) { index in
+                            ForEach(0..<8, id: \.self) { index in
                                 Capsule()
                                     .fill(index <= currentStep ? AppTheme.primary : Color.gray.opacity(0.3))
                                     .frame(height: 4)
@@ -119,7 +119,22 @@ struct OnboardingView: View {
         case 4:
             Step5CompleteView(
                 nickname: onboardingData.nickname,
-                onComplete: {
+                onComplete: nextStep
+            )
+            
+        case 5:
+            Step6NotificationView(
+                onNext: nextStep
+            )
+            
+        case 6:
+            Step7HealthView(
+                onNext: nextStep
+            )
+            
+        case 7:
+            Step8CameraView(
+                onNext: {
                     // 保存数据到本地
                     onboardingData.save()
                     // 显示注册提示

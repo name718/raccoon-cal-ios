@@ -1,13 +1,13 @@
 //
-//  Step5CompleteView.swift
+//  Step9CompleteView.swift
 //  RaccoonCal
 //
-//  Created by didi on 2026/3/12.
+//  Created by didi on 2026/3/11.
 //
 
 import SwiftUI
 
-struct Step5CompleteView: View {
+struct Step9CompleteView: View {
     let nickname: String
     let onComplete: () -> Void
     @State private var isGenerating = true
@@ -62,15 +62,14 @@ struct Step5CompleteView: View {
                 .padding(.horizontal)
             } else {
                 VStack(spacing: 15) {
-                    Text("计划生成完成")
+                    Text("准备完成")
                         .font(.largeTitle)
                         .fontWeight(.bold)
                         .foregroundColor(AppTheme.primary)
                     
-                    Text("接下来需要一些权限来提供更好的服务")
+                    Text("让我们开始健康之旅吧")
                         .font(.title3)
                         .multilineTextAlignment(.center)
-                        .foregroundColor(.secondary)
                 }
                 .padding(.horizontal)
             }
@@ -103,15 +102,11 @@ struct Step5CompleteView: View {
                 withAnimation {
                     isGenerating = false
                 }
-                // 延迟1秒后自动跳转到权限页面
-                DispatchQueue.main.asyncAfter(deadline: .now() + 1.0) {
+                // 延迟0.5秒后跳转
+                DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
                     onComplete()
                 }
             }
         }
     }
-}
-
-#Preview {
-    Step5CompleteView(nickname: "小明", onComplete: {})
 }
