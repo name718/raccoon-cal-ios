@@ -16,7 +16,7 @@ struct RegisterPromptView: View {
             Spacer()
             
             // Logo
-            Image("Logo")
+            Image("RaccoonExcited")
                 .resizable()
                 .scaledToFit()
                 .frame(width: 120, height: 120)

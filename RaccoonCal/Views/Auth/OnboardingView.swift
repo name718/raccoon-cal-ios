@@ -13,13 +13,14 @@ struct OnboardingView: View {
     @State private var showExitAlert = false
     @State private var navigateToMain = false
     @State private var showRegisterPrompt = false
+    @State private var navigateToRegister = false
     
     var body: some View {
         ZStack {
             if showRegisterPrompt {
                 RegisterPromptView(
                     navigateToMain: $navigateToMain,
-                    navigateToRegister: .constant(false)
+                    navigateToRegister: $navigateToRegister
                 )
             } else {
                 VStack {
@@ -67,6 +68,11 @@ struct OnboardingView: View {
             
             // 隐藏的导航链接
             NavigationLink(destination: MainTabView().navigationBarBackButtonHidden(true), isActive: $navigateToMain) {
+                EmptyView()
+            }
+            .hidden()
+            
+            NavigationLink(destination: RegisterView(), isActive: $navigateToRegister) {
                 EmptyView()
             }
             .hidden()
