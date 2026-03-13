@@ -9,9 +9,15 @@ import SwiftUI
 
 @main
 struct RaccoonCalApp: App {
+    @StateObject private var userManager = UserManager.shared
+    
     var body: some Scene {
         WindowGroup {
-            LaunchView()
+            if userManager.isLoggedIn {
+                MainTabView()
+            } else {
+                LaunchView()
+            }
         }
     }
 }

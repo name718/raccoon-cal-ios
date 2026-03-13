@@ -8,6 +8,7 @@
 import SwiftUI
 
 struct RegisterView: View {
+    @State private var username = ""
     @State private var email = ""
     @State private var password = ""
     @State private var confirmPassword = ""
@@ -16,6 +17,8 @@ struct RegisterView: View {
     @State private var isRegistering = false
     @State private var showAlert = false
     @State private var alertMessage = ""
+    
+    @StateObject private var userManager = UserManager.shared
     
     var body: some View {
         ZStack {
@@ -41,6 +44,30 @@ struct RegisterView: View {
                 
                 // 输入框
                 VStack(spacing: 15) {
+                    // 用户名输入框
+                    VStack(alignment: .leading, spacing: 8) {
+                        Text("用户名")
+                            .font(.subheadline)
+                            .foregroundColor(.secondary)
+                        
+                        TextField("请输入用户名（3-20个字符）", text: $username)
+                            .textFieldStyle(.plain)
+                            .padding()
+                            .background(Color.gray.opacity(0.1))
+                            .cornerRadius(10)
+                            .autocapitalization(.none)
+                            .overlay(
+                                RoundedRectangle(cornerRadius: 10)
+                                    .stroke(usernameValidationColor, lineWidth: 1)
+                            )
+                        
+                        if !username.isEmpty && !isValidUsername(username) {
+                            Text("用户名需要3-20个字符，只能包含字母和数字")
+                                .font(.caption)
+                                .foregroundColor(.red)
+                        }
+                    }
+                    
                     // 邮箱输入框
                     VStack(alignment: .leading, spacing: 8) {
                         Text("邮箱")
@@ -134,13 +161,9 @@ struct RegisterView: View {
                 
                 // 注册按钮
                 Button(action: {
-                    print("注册按钮被点击")
-                    print("表单验证状态: \(isFormValid)")
-                    print("邮箱: \(email)")
-                    print("密码长度: \(password.count)")
-                    print("密码一致: \(password == confirmPassword)")
-                    print("同意条款: \(agreedToTerms)")
-                    registerUser()
+                    Task {
+                        await registerUser()
+                    }
                 }) {
                     HStack {
                         if isRegistering {
@@ -186,18 +209,29 @@ struct RegisterView: View {
         }
         .navigationBarTitleDisplayMode(.inline)
         .alert("注册提示", isPresented: $showAlert) {
-            Button("确定", role: .cancel) { }
+            Button("确定", role: .cancel) { 
+                if userManager.isLoggedIn {
+                    navigateToMain = true
+                }
+            }
         } message: {
             Text(alertMessage)
         }
     }
     
     private var isFormValid: Bool {
-        !email.isEmpty &&
+        isValidUsername(username) &&
+        isValidEmail(email) &&
         password.count >= 6 &&
-        !confirmPassword.isEmpty &&
         password == confirmPassword &&
         agreedToTerms
+    }
+    
+    private var usernameValidationColor: Color {
+        if username.isEmpty {
+            return Color.clear
+        }
+        return isValidUsername(username) ? AppTheme.primary : Color.red
     }
     
     private var emailValidationColor: Color {
@@ -221,35 +255,41 @@ struct RegisterView: View {
         return password == confirmPassword ? AppTheme.primary : Color.red
     }
     
+    private func isValidUsername(_ username: String) -> Bool {
+        let usernameRegex = "^[a-zA-Z0-9]{3,20}$"
+        let usernamePredicate = NSPredicate(format:"SELF MATCHES %@", usernameRegex)
+        return usernamePredicate.evaluate(with: username)
+    }
+    
     private func isValidEmail(_ email: String) -> Bool {
         let emailRegex = "[A-Z0-9a-z._%+-]+@[A-Za-z0-9.-]+\\.[A-Za-z]{2,64}"
         let emailPredicate = NSPredicate(format:"SELF MATCHES %@", emailRegex)
         return emailPredicate.evaluate(with: email)
     }
     
-    private func registerUser() {
-        // 在注册前再次验证邮箱格式
-        if !isValidEmail(email) {
-            alertMessage = "请输入有效的邮箱地址"
-            showAlert = true
-            return
-        }
-        
+    @MainActor
+    private func registerUser() async {
         isRegistering = true
         
-        // 模拟注册过程
-        DispatchQueue.main.asyncAfter(deadline: .now() + 2.0) {
-            isRegistering = false
+        do {
+            try await userManager.register(
+                username: username,
+                password: password,
+                email: email.isEmpty ? nil : email
+            )
             
-            // 模拟注册成功
             alertMessage = "注册成功！欢迎加入浣熊卡路里"
             showAlert = true
             
-            // 延迟跳转到主页面
-            DispatchQueue.main.asyncAfter(deadline: .now() + 1.5) {
-                navigateToMain = true
-            }
+        } catch let error as APIServiceError {
+            alertMessage = error.localizedDescription
+            showAlert = true
+        } catch {
+            alertMessage = "注册失败：\(error.localizedDescription)"
+            showAlert = true
         }
+        
+        isRegistering = false
     }
 }
 

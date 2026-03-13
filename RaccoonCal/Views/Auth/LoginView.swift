@@ -8,10 +8,15 @@
 import SwiftUI
 
 struct LoginView: View {
-    @State private var username = ""
+    @State private var identifier = ""
     @State private var password = ""
     @State private var agreedToTerms = false
     @State private var navigateToMain = false
+    @State private var isLoggingIn = false
+    @State private var showAlert = false
+    @State private var alertMessage = ""
+    
+    @StateObject private var userManager = UserManager.shared
     
     var body: some View {
         ZStack {
@@ -43,7 +48,7 @@ struct LoginView: View {
                             .font(.subheadline)
                             .foregroundColor(.secondary)
                         
-                        TextField("请输入账号", text: $username)
+                        TextField("请输入用户名/邮箱/手机号", text: $identifier)
                             .textFieldStyle(.plain)
                             .padding()
                             .background(Color.gray.opacity(0.1))
@@ -86,19 +91,26 @@ struct LoginView: View {
                 
                 // 登录按钮
                 Button(action: {
-                    // TODO: 调用登录接口
-                    // 这里先直接跳转
-                    navigateToMain = true
+                    Task {
+                        await loginUser()
+                    }
                 }) {
-                    Text("登录")
-                        .font(.headline)
-                        .foregroundColor(.white)
-                        .frame(maxWidth: .infinity)
-                        .padding()
-                        .background(agreedToTerms ? AppTheme.primary : Color.gray)
-                        .cornerRadius(12)
+                    HStack {
+                        if isLoggingIn {
+                            ProgressView()
+                                .scaleEffect(0.8)
+                                .foregroundColor(.white)
+                        }
+                        Text(isLoggingIn ? "登录中..." : "登录")
+                    }
+                    .font(.headline)
+                    .foregroundColor(.white)
+                    .frame(maxWidth: .infinity)
+                    .padding()
+                    .background(isFormValid ? AppTheme.primary : Color.gray)
+                    .cornerRadius(12)
                 }
-                .disabled(!agreedToTerms)
+                .disabled(!isFormValid || isLoggingIn)
                 .padding(.horizontal, 30)
                 
                 Spacer()
@@ -111,6 +123,42 @@ struct LoginView: View {
             .hidden()
         }
         .navigationBarTitleDisplayMode(.inline)
+        .alert("登录提示", isPresented: $showAlert) {
+            Button("确定", role: .cancel) {
+                if userManager.isLoggedIn {
+                    navigateToMain = true
+                }
+            }
+        } message: {
+            Text(alertMessage)
+        }
+    }
+    
+    private var isFormValid: Bool {
+        !identifier.isEmpty && 
+        !password.isEmpty && 
+        agreedToTerms
+    }
+    
+    @MainActor
+    private func loginUser() async {
+        isLoggingIn = true
+        
+        do {
+            try await userManager.login(identifier: identifier, password: password)
+            
+            alertMessage = "登录成功！欢迎回来"
+            showAlert = true
+            
+        } catch let error as APIServiceError {
+            alertMessage = error.localizedDescription
+            showAlert = true
+        } catch {
+            alertMessage = "登录失败：\(error.localizedDescription)"
+            showAlert = true
+        }
+        
+        isLoggingIn = false
     }
 }
 
