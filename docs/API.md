@@ -1,70 +1,47 @@
 # API 接口文档
 
-## 基础信息
+iOS App 使用的 API 接口由 `raccoon-cal-server` 提供。
 
-- **Base URL**: `https://api.raccooncal.com/v1`
-- **认证方式**: Bearer Token (JWT)
-- **请求格式**: JSON
-- **响应格式**: JSON
+完整接口文档请查看：[raccoon-cal-server/docs/API.md](../../raccoon-cal-server/docs/API.md)
 
-## 通用响应格式
+## iOS 端快速参考
 
-```typescript
-interface APIResponse<T> {
-  success: boolean;
-  data?: T;
-  error?: {
-    code: string;
-    message: string;
-  };
-  timestamp: string;
-}
+- Base URL（开发）：`http://localhost:3000/api`
+- 认证：`Authorization: Bearer <token>`（登录/注册后获取，存储在 `UserManager.shared.token`）
+- 所有请求/响应均为 JSON
+
+## APIService 方法列表
+
+```swift
+// 认证
+func register(username:password:email:phone:) async throws -> AuthResponse
+func login(identifier:password:) async throws -> AuthResponse
+func getMe() async throws -> User
+
+// 食物
+func recognizeFood(imageData: Data) async throws -> FoodRecognitionResult
+func saveFoodRecord(_ record: FoodRecordRequest) async throws -> FoodRecord
+func getFoodRecords(date: String) async throws -> [MealGroup]
+func deleteFoodRecord(id: Int) async throws
+func getFoodStats(days: Int) async throws -> NutritionStats
+
+// 游戏化
+func getGamificationStatus() async throws -> GamificationStatus
+func getPetStatus() async throws -> PetStatus
+func interactWithPet() async throws
+func updatePetOutfit(_ outfit: OutfitRequest) async throws
+
+// 任务与成就
+func getDailyTasks() async throws -> [DailyTask]
+func getAchievements() async throws -> [Achievement]
+
+// 联盟
+func getLeague() async throws -> LeagueInfo
+func getLeagueSettlement() async throws -> LeagueSettlement?
+
+// 个人资料
+func getProfile() async throws -> UserProfile
+func updateProfile(_ profile: ProfileUpdateRequest) async throws -> UserProfile
+func recordWeight(_ weight: Double) async throws
+func getWeightHistory() async throws -> [WeightRecord]
 ```
-
-## 错误码说明
-
-| 错误码 | HTTP状态码 | 说明 |
-|--------|------------|------|
-| `AUTH_REQUIRED` | 401 | 需要登录认证 |
-| `INVALID_TOKEN` | 401 | Token无效或过期 |
-| `PERMISSION_DENIED` | 403 | 权限不足 |
-| `NOT_FOUND` | 404 | 资源不存在 |
-| `VALIDATION_ERROR` | 400 | 请求参数验证失败 |
-| `RATE_LIMIT_EXCEEDED` | 429 | 请求频率超限 |
-| `INTERNAL_ERROR` | 500 | 服务器内部错误 |
-
-## API 接口列表
-
-具体的 API 接口将在开发过程中逐步添加和完善。
-
-## 1. 认证接口
-
-待开发...
-
-## 2. 用户接口
-
-待开发...
-
-## 3. 食物识别接口
-
-待开发...
-
-## 4. 浣熊养成接口
-
-待开发...
-
-## 5. 社交功能接口
-
-待开发...
-
-## 6. 数据统计接口
-
-待开发...
-
-## 7. 通知接口
-
-待开发...
-
-## 8. 系统接口
-
-待开发...

@@ -1,83 +1,72 @@
-<div align="center">
-  <img src="logo.png" alt="RaccoonCal Logo" width="120" height="120">
-  
-  # 浣熊卡路里 (RaccoonCal)
-  
-  一个基于iOS原生技术的智能卡路里管理应用，通过拍照识别食物卡路里，结合虚拟宠物养成和社交功能，让健康管理变得有趣。
-</div>
+# RaccoonCal iOS
 
-## 🦝 项目特色
+浣熊卡路里 iOS 原生应用。拍照识别食物卡路里，结合游戏化宠物养成系统。
 
-- **智能识别**：拍照即可识别食物并计算卡路里
-- **虚拟宠物**：通过健康饮食养成可爱的浣熊宠物
-- **社交互动**：与朋友分享健康生活，互相监督鼓励
-- **原生体验**：使用Swift + SwiftUI构建，性能优异
+## 技术栈
 
-## 🛠 技术栈
+- Swift 5.9+ / SwiftUI / iOS 15+
+- AVFoundation（相机）
+- PHPickerViewController（相册）
+- UNUserNotificationCenter（本地通知）
+- URLSession + Bearer JWT（网络请求）
 
-- **前端**：iOS Native (Swift + SwiftUI)
-- **后端**：Express.js + Node.js
-- **数据库**：MongoDB + Redis
-- **包管理**：Swift Package Manager
+## 项目结构
 
-## 📱 功能模块
-
-1. **拍照识别卡路里**
-   - 智能食物识别
-   - 营养成分分析
-   - 卡路里计算
-
-2. **虚拟宠物养成**
-   - 浣熊宠物系统
-   - 健康行为奖励
-   - 宠物成长机制
-
-3. **社交功能**
-   - 好友系统
-   - 健康挑战
-   - 成就分享
-
-## 📚 文档
-
-- [产品需求文档](docs/PRD.md)
-- [技术设计文档](docs/TECH_DESIGN.md)
-- [开发指南](docs/DEVELOPMENT.md)
-- [代码规范](docs/CODE_STYLE.md)
-- [API文档](docs/API.md)
-
-## 🚀 快速开始
-
-### 环境要求
-
-- Xcode 14.0+
-- iOS 15.0+
-- Swift 5.7+
-
-### 安装步骤
-
-1. 克隆项目
-```bash
-git clone https://github.com/name718/raccoon-cal.git
-cd raccoon-cal
+```
+RaccoonCal/
+├── App/
+│   └── RaccoonCalApp.swift        # 应用入口
+├── Models/
+│   ├── APIModels.swift            # 基础 API 模型
+│   ├── GamificationModels.swift   # XP/等级/HP/Streak
+│   ├── FoodModels.swift           # 食物识别/记录
+│   ├── PetModels.swift            # 浣熊宠物
+│   ├── TaskModels.swift           # 每日任务
+│   ├── AchievementModels.swift    # 成就徽章
+│   └── LeagueModels.swift         # 联盟排行榜
+├── Services/
+│   ├── APIService.swift           # 网络请求封装
+│   ├── UserManager.swift          # 用户状态管理
+│   ├── GamificationManager.swift  # 游戏化状态管理
+│   └── NotificationManager.swift  # 本地通知管理
+├── Views/
+│   ├── Auth/                      # 登录/注册/Onboarding
+│   ├── Tabs/                      # 主 Tab 框架
+│   ├── Home/                      # 首页今日概览
+│   ├── Camera/                    # 拍照识别
+│   ├── Record/                    # 饮食历史
+│   ├── Pet/                       # 浣熊养成
+│   ├── Profile/                   # 个人资料
+│   └── Components/                # 共享 UI 组件
+├── Theme/
+│   └── AppTheme.swift             # 颜色/字体/间距常量
+└── Assets.xcassets/               # 图片资源
 ```
 
-2. 打开Xcode项目
+## 快速开始
+
 ```bash
+git clone https://github.com/name718/raccoon-cal.git
+cd raccoon-cal/raccoon-cal-app
 open RaccoonCal.xcodeproj
 ```
 
-3. 运行项目
-- 选择目标设备或模拟器
-- 点击运行按钮或按 `Cmd + R`
+选择模拟器或真机，`Cmd + R` 运行。
 
-## 📄 许可证
+## 环境要求
 
-MIT License
+- Xcode 15+
+- iOS 15.0+ 部署目标
+- Swift 5.9+
 
-## 🤝 贡献
+## 服务端
 
-欢迎提交Issue和Pull Request来帮助改进项目！
+本 App 依赖 `raccoon-cal-server`，确保服务端已启动并在 `APIService.swift` 中配置正确的 `baseURL`。
 
----
+## 文档
 
-让健康管理变得简单有趣 🦝✨
+- [技术设计文档](docs/TECH_DESIGN.md)
+- [开发指南](docs/DEVELOPMENT.md)
+- [代码规范](docs/CODE_STYLE.md)
+- [编辑器配置](docs/EDITOR_SETUP.md)
+- [API 接口文档](../raccoon-cal-server/docs/API.md)
