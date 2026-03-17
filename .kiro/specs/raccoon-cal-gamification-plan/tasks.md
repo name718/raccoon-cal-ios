@@ -86,15 +86,15 @@
 
 ### 任务 5：浣熊宠物 API
 
-- [ ] 5.1 创建 `src/services/pet.service.ts`
-- [ ] 5.2 实现 `getPetStatus(userId)`（含心情计算，Redis 缓存 10 分钟）
-- [ ] 5.3 实现 `interactWithPet(userId)`（+XP，幂等：每日一次）
-- [ ] 5.4 实现 `updatePetOutfit(userId, outfit)`（保存装扮槽位数据）
-- [ ] 5.5 实现 `getUnlockedOutfits(userId)`（返回已解锁装扮 key 列表）
+- [x] 5.1 创建 `src/services/pet.service.ts`
+- [x] 5.2 实现 `getPetStatus(userId)`（含心情计算，Redis 缓存 10 分钟）
+- [x] 5.3 实现 `interactWithPet(userId)`（+XP，幂等：每日一次）
+- [x] 5.4 实现 `updatePetOutfit(userId, outfit)`（保存装扮槽位数据）
+- [x] 5.5 实现 `getUnlockedOutfits(userId)`（返回已解锁装扮 key 列表）
 - `[DEFERRED]` 装扮解锁与 3D 资产关联逻辑（等待美术资源）
-- [ ] 5.6 创建 `src/controllers/pet.controller.ts` 和路由
-- [ ] 5.7 注册路由：`GET /api/pet`、`POST /api/pet/interact`、`PUT /api/pet/outfit`、`GET /api/pet/outfits`
-- [ ] 5.8 在 `app.ts` 中挂载 pet 路由
+- [x] 5.6 创建 `src/controllers/pet.controller.ts` 和路由
+- [x] 5.7 注册路由：`GET /api/pet`、`POST /api/pet/interact`、`PUT /api/pet/outfit`、`GET /api/pet/outfits`
+- [x] 5.8 在 `app.ts` 中挂载 pet 路由
 
 ---
 
