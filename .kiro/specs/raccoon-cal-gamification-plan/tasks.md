@@ -116,12 +116,12 @@
 
 ### 任务 7：成就徽章 API
 
-- [ ] 7.1 创建 `src/services/achievement.service.ts`
-- [ ] 7.2 实现 `getAchievements(userId)`（返回全部成就含解锁状态）
-- [ ] 7.3 实现 `checkAndUnlockAchievements(userId)`（检查并解锁满足条件的成就，幂等）
-- [ ] 7.4 创建 `src/controllers/achievement.controller.ts` 和路由
-- [ ] 7.5 注册路由：`GET /api/achievements`
-- [ ] 7.6 在 `app.ts` 中挂载 achievement 路由
+- [x] 7.1 创建 `src/services/achievement.service.ts`
+- [x] 7.2 实现 `getAchievements(userId)`（返回全部成就含解锁状态）
+- [x] 7.3 实现 `checkAndUnlockAchievements(userId)`（检查并解锁满足条件的成就，幂等）
+- [x] 7.4 创建 `src/controllers/achievement.controller.ts` 和路由
+- [x] 7.5 注册路由：`GET /api/achievements`
+- [x] 7.6 在 `app.ts` 中挂载 achievement 路由
 
 **属性测试**：Property 22（成就解锁幂等性）、Property 23（成就进度百分比）
 
