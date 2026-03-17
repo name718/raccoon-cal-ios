@@ -75,12 +75,12 @@
 
 ### 任务 4：游戏化状态 API
 
-- [ ] 4.1 创建 `src/services/gamification.service.ts`
-- [ ] 4.2 实现 `getGamificationStatus(userId)`（含 Redis 缓存，TTL 5 分钟）
-- [ ] 4.3 实现 `getXpHistory(userId)`
-- [ ] 4.4 创建 `src/controllers/gamification.controller.ts` 和路由
-- [ ] 4.5 注册路由：`GET /api/gamification/status`、`GET /api/gamification/history`
-- [ ] 4.6 在 `app.ts` 中挂载 gamification 路由
+- [x] 4.1 创建 `src/services/gamification.service.ts`
+- [x] 4.2 实现 `getGamificationStatus(userId)`（含 Redis 缓存，TTL 5 分钟）
+- [x] 4.3 实现 `getXpHistory(userId)`
+- [x] 4.4 创建 `src/controllers/gamification.controller.ts` 和路由
+- [x] 4.5 注册路由：`GET /api/gamification/status`、`GET /api/gamification/history`
+- [x] 4.6 在 `app.ts` 中挂载 gamification 路由
 
 ---
 
