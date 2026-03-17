@@ -32,14 +32,14 @@
 
 ### 任务 2：游戏化引擎核心工具函数
 
-- [ ] 2.1 创建 `src/utils/gamificationEngine.ts`
-- [ ] 2.2 实现 `calcLevel(totalXp: number): number`（等级公式 100×N²，上限 50 级）
-- [ ] 2.3 实现 `xpToNextLevel(totalXp: number): number`
-- [ ] 2.4 实现 `awardXp(userId, reason, refId, amount)`（含 Redis 去重 + DB 唯一约束幂等）
-- [ ] 2.5 实现 `checkAndDeductHp(userId, date)`（超出目标 10% 时扣减 HP，下限 0）
-- [ ] 2.6 实现 `calcPetMood(params)`（6 种心情状态确定性计算）
-- [ ] 2.7 实现 `calcSatietyDelta(recordCalories, dailyTarget)`（饱食度增量，上限 100）
-- [ ] 2.8 创建 `src/utils/calorieCalculator.ts`，实现 Harris-Benedict 公式计算每日卡路里目标
+- [x] 2.1 创建 `src/utils/gamificationEngine.ts`
+- [x] 2.2 实现 `calcLevel(totalXp: number): number`（等级公式 100×N²，上限 50 级）
+- [x] 2.3 实现 `xpToNextLevel(totalXp: number): number`
+- [x] 2.4 实现 `awardXp(userId, reason, refId, amount)`（含 Redis 去重 + DB 唯一约束幂等）
+- [x] 2.5 实现 `checkAndDeductHp(userId, date)`（超出目标 10% 时扣减 HP，下限 0）
+- [x] 2.6 实现 `calcPetMood(params)`（6 种心情状态确定性计算）
+- [x] 2.7 实现 `calcSatietyDelta(recordCalories, dailyTarget)`（饱食度增量，上限 100）
+- [x] 2.8 创建 `src/utils/calorieCalculator.ts`，实现 Harris-Benedict 公式计算每日卡路里目标
 
 **属性测试**：
 - Property 13（等级公式正确性）：`fc.integer({ min: 0, max: 250000 })` 验证等级区间
@@ -53,7 +53,7 @@
 
 ### 任务 3：食物识别与记录 API
 
-- [ ] 3.1 创建 `src/services/logmeal.service.ts`，封装 LogMeal API 调用
+- [ ] 3.1 创建 `src/services/logmeal.service.ts`，封装 LogMeal API(令牌：c2c524a7ed34ad36fd4dd124eebda1f4d74321d8) 调用
 - [ ] 3.2 实现图片预处理（Sharp 压缩至 800px 宽，质量 80%）
 - [ ] 3.3 实现识别失败处理（置信度 < 0.3 或空结果返回 `{ foods: [], confidence: 0 }`）
 - [ ] 3.4 创建 `src/services/food.service.ts`，实现饮食记录 CRUD
