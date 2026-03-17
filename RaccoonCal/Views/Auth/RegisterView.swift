@@ -12,13 +12,17 @@ struct RegisterView: View {
     @State private var email = ""
     @State private var password = ""
     @State private var confirmPassword = ""
+    @State private var captchaCode = ""
     @State private var agreedToTerms = false
     @State private var navigateToMain = false
     @State private var isRegistering = false
     @State private var showAlert = false
     @State private var alertMessage = ""
+    @State private var showCaptcha = false
+    @State private var captchaVerified = false
     
     @StateObject private var userManager = UserManager.shared
+    @StateObject private var captchaManager = CaptchaManager()
     
     var body: some View {
         ZStack {
@@ -138,6 +142,20 @@ struct RegisterView: View {
                                 .foregroundColor(.red)
                         }
                     }
+                    
+                    // 验证码（如果需要）
+                    if showCaptcha {
+                        VStack(alignment: .leading, spacing: 8) {
+                            Text("验证码")
+                                .font(.subheadline)
+                                .foregroundColor(.secondary)
+                            
+                            CaptchaView(captchaCode: $captchaCode) {
+                                captchaVerified = true
+                                showCaptcha = false
+                            }
+                        }
+                    }
                 }
                 .padding(.horizontal, 30)
                 
@@ -162,7 +180,7 @@ struct RegisterView: View {
                 // 注册按钮
                 Button(action: {
                     Task {
-                        await registerUser()
+                        await handleRegister()
                     }
                 }) {
                     HStack {
@@ -182,6 +200,13 @@ struct RegisterView: View {
                 }
                 .disabled(!isFormValid || isRegistering)
                 .padding(.horizontal, 30)
+                
+                // 冷却时间提示
+                if captchaManager.needsCaptcha && !captchaVerified {
+                    Text("请等待 \(captchaManager.remainingCooldownTime) 秒后重试")
+                        .font(.caption)
+                        .foregroundColor(.orange)
+                }
                 
                 // 登录链接
                 HStack {
@@ -220,11 +245,18 @@ struct RegisterView: View {
     }
     
     private var isFormValid: Bool {
-        isValidUsername(username) &&
-        isValidEmail(email) &&
-        password.count >= 6 &&
-        password == confirmPassword &&
-        agreedToTerms
+        let basicValid = isValidUsername(username) &&
+                        isValidEmail(email) &&
+                        password.count >= 6 &&
+                        password == confirmPassword &&
+                        agreedToTerms
+        
+        // 如果需要验证码，必须验证通过
+        if showCaptcha {
+            return basicValid && captchaVerified
+        }
+        
+        return basicValid
     }
     
     private var usernameValidationColor: Color {
@@ -268,6 +300,17 @@ struct RegisterView: View {
     }
     
     @MainActor
+    private func handleRegister() async {
+        // 检查是否需要验证码
+        if captchaManager.needsCaptcha && !captchaVerified {
+            showCaptcha = true
+            return
+        }
+        
+        await registerUser()
+    }
+    
+    @MainActor
     private func registerUser() async {
         isRegistering = true
         
@@ -277,6 +320,9 @@ struct RegisterView: View {
                 password: password,
                 email: email.isEmpty ? nil : email
             )
+            
+            // 记录请求时间
+            captchaManager.recordRequest()
             
             alertMessage = "注册成功！欢迎加入浣熊卡路里"
             showAlert = true

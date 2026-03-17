@@ -10,13 +10,17 @@ import SwiftUI
 struct LoginView: View {
     @State private var identifier = ""
     @State private var password = ""
+    @State private var captchaCode = ""
     @State private var agreedToTerms = false
     @State private var navigateToMain = false
     @State private var isLoggingIn = false
     @State private var showAlert = false
     @State private var alertMessage = ""
+    @State private var showCaptcha = false
+    @State private var captchaVerified = false
     
     @StateObject private var userManager = UserManager.shared
+    @StateObject private var captchaManager = CaptchaManager()
     
     var body: some View {
         ZStack {
@@ -68,6 +72,20 @@ struct LoginView: View {
                             .background(Color.gray.opacity(0.1))
                             .cornerRadius(10)
                     }
+                    
+                    // 验证码（如果需要）
+                    if showCaptcha {
+                        VStack(alignment: .leading, spacing: 8) {
+                            Text("验证码")
+                                .font(.subheadline)
+                                .foregroundColor(.secondary)
+                            
+                            CaptchaView(captchaCode: $captchaCode) {
+                                captchaVerified = true
+                                showCaptcha = false
+                            }
+                        }
+                    }
                 }
                 .padding(.horizontal, 30)
                 
@@ -92,7 +110,7 @@ struct LoginView: View {
                 // 登录按钮
                 Button(action: {
                     Task {
-                        await loginUser()
+                        await handleLogin()
                     }
                 }) {
                     HStack {
@@ -112,6 +130,13 @@ struct LoginView: View {
                 }
                 .disabled(!isFormValid || isLoggingIn)
                 .padding(.horizontal, 30)
+                
+                // 冷却时间提示
+                if captchaManager.needsCaptcha && !captchaVerified {
+                    Text("请等待 \(captchaManager.remainingCooldownTime) 秒后重试")
+                        .font(.caption)
+                        .foregroundColor(.orange)
+                }
                 
                 Spacer()
             }
@@ -135,9 +160,27 @@ struct LoginView: View {
     }
     
     private var isFormValid: Bool {
-        !identifier.isEmpty && 
-        !password.isEmpty && 
-        agreedToTerms
+        let basicValid = !identifier.isEmpty && 
+                        !password.isEmpty && 
+                        agreedToTerms
+        
+        // 如果需要验证码，必须验证通过
+        if showCaptcha {
+            return basicValid && captchaVerified
+        }
+        
+        return basicValid
+    }
+    
+    @MainActor
+    private func handleLogin() async {
+        // 检查是否需要验证码
+        if captchaManager.needsCaptcha && !captchaVerified {
+            showCaptcha = true
+            return
+        }
+        
+        await loginUser()
     }
     
     @MainActor
@@ -146,6 +189,9 @@ struct LoginView: View {
         
         do {
             try await userManager.login(identifier: identifier, password: password)
+            
+            // 记录请求时间
+            captchaManager.recordRequest()
             
             alertMessage = "登录成功！欢迎回来"
             showAlert = true

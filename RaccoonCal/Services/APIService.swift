@@ -10,10 +10,24 @@ import Foundation
 class APIService: ObservableObject {
     static let shared = APIService()
     
-    private let baseURL = "http://localhost:3000/api"
-    private let session = URLSession.shared
+    // 可配置的baseURL，支持本地开发和生产环境
+    private let baseURL: String = {
+        #if DEBUG
+        return "http://localhost:3000/api"
+        #else
+        return "https://your-production-api.com/api"
+        #endif
+    }()
     
-    private init() {}
+    private let session: URLSession
+    
+    private init() {
+        // 配置URLSession以支持HTTP连接
+        let configuration = URLSessionConfiguration.default
+        configuration.timeoutIntervalForRequest = 30
+        configuration.timeoutIntervalForResource = 60
+        self.session = URLSession(configuration: configuration)
+    }
     
     // MARK: - 通用请求方法
     private func request<T: Codable>(
@@ -68,90 +82,93 @@ class APIService: ObservableObject {
     
     // MARK: - 认证接口
     func register(username: String, password: String, email: String?) async throws -> AuthResponse {
-        // 模拟网络延迟
-        try await Task.sleep(nanoseconds: 1_000_000_000) // 1秒
-        
-        // 模拟注册成功
-        let user = User(
-            id: 1,
+        let registerRequest = RegisterRequest(
             username: username,
+            password: password,
             email: email,
-            phone: nil,
-            emailVerified: false,
-            phoneVerified: false,
-            createdAt: ISO8601DateFormatter().string(from: Date())
+            phone: nil
         )
         
-        let token = "mock_token_\(UUID().uuidString)"
+        let body = try JSONEncoder().encode(registerRequest)
+        let response: APIResponse<AuthResponse> = try await request(
+            endpoint: "/auth/register",
+            method: .POST,
+            body: body,
+            responseType: APIResponse<AuthResponse>.self
+        )
+        
+        guard let data = response.data else {
+            throw APIServiceError.noData
+        }
         
         // 保存token
-        UserDefaults.standard.set(token, forKey: "auth_token")
+        UserDefaults.standard.set(data.token, forKey: "auth_token")
         
-        return AuthResponse(user: user, token: token)
+        return data
     }
     
     func login(identifier: String, password: String) async throws -> AuthResponse {
-        // 模拟网络延迟
-        try await Task.sleep(nanoseconds: 1_000_000_000) // 1秒
+        let loginRequest = LoginRequest(identifier: identifier, password: password)
+        let body = try JSONEncoder().encode(loginRequest)
         
-        // 简单的模拟验证
-        if password.count < 6 {
-            throw APIServiceError.serverError("密码错误")
-        }
-        
-        // 模拟登录成功
-        let user = User(
-            id: 1,
-            username: identifier,
-            email: identifier.contains("@") ? identifier : nil,
-            phone: nil,
-            emailVerified: false,
-            phoneVerified: false,
-            createdAt: nil
+        let response: APIResponse<AuthResponse> = try await request(
+            endpoint: "/auth/login",
+            method: .POST,
+            body: body,
+            responseType: APIResponse<AuthResponse>.self
         )
         
-        let token = "mock_token_\(UUID().uuidString)"
+        guard let data = response.data else {
+            throw APIServiceError.noData
+        }
         
         // 保存token
-        UserDefaults.standard.set(token, forKey: "auth_token")
+        UserDefaults.standard.set(data.token, forKey: "auth_token")
         
-        return AuthResponse(user: user, token: token)
+        return data
     }
     
     func getCurrentUser() async throws -> User {
-        // 模拟网络延迟
-        try await Task.sleep(nanoseconds: 500_000_000) // 0.5秒
-        
-        // 模拟返回用户信息
-        return User(
-            id: 1,
-            username: "testuser",
-            email: "test@example.com",
-            phone: nil,
-            emailVerified: false,
-            phoneVerified: false,
-            createdAt: nil
+        let response: APIResponse<User> = try await request(
+            endpoint: "/auth/me",
+            method: .GET,
+            responseType: APIResponse<User>.self
         )
+        
+        guard let data = response.data else {
+            throw APIServiceError.noData
+        }
+        
+        return data
     }
     
     // MARK: - 验证码接口
     func generateCaptcha() async throws -> CaptchaResponse {
-        // 模拟网络延迟
-        try await Task.sleep(nanoseconds: 500_000_000) // 0.5秒
-        
-        // 模拟验证码
-        return CaptchaResponse(
-            captchaId: UUID().uuidString,
-            captchaImage: "data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMTIwIiBoZWlnaHQ9IjQwIj48dGV4dCB4PSI2MCIgeT0iMjUiIGZvbnQtc2l6ZT0iMjAiIHRleHQtYW5jaG9yPSJtaWRkbGUiPkFCQ0Q8L3RleHQ+PC9zdmc+"
+        let response: APIResponse<CaptchaResponse> = try await request(
+            endpoint: "/captcha/generate",
+            method: .GET,
+            responseType: APIResponse<CaptchaResponse>.self
         )
+        
+        guard let data = response.data else {
+            throw APIServiceError.noData
+        }
+        
+        return data
     }
     
     func verifyCaptcha(captchaId: String, captchaCode: String) async throws -> Bool {
-        // 模拟网络延迟
-        try await Task.sleep(nanoseconds: 500_000_000) // 0.5秒
+        let verifyRequest = CaptchaVerifyRequest(captchaId: captchaId, captchaCode: captchaCode)
+        let body = try JSONEncoder().encode(verifyRequest)
         
-        // 模拟验证成功
-        return captchaCode.uppercased() == "ABCD"
+        let response: APIResponse<CaptchaVerifyResponse> = try await request(
+            endpoint: "/captcha/verify",
+            method: .POST,
+            body: body,
+            responseType: APIResponse<CaptchaVerifyResponse>.self
+        )
+        
+        return response.data?.valid ?? false
     }
     
     // MARK: - 登出
