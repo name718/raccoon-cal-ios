@@ -144,13 +144,13 @@
 
 ### 任务 9：个人资料 API
 
-- [ ] 9.1 创建 `src/services/profile.service.ts`
-- [ ] 9.2 实现 `getProfile(userId)`
-- [ ] 9.3 实现 `updateProfile(userId, data)`（触发卡路里目标重算）
-- [ ] 9.4 实现 `recordWeight(userId, weight)` 和 `getWeightHistory(userId)`
-- [ ] 9.5 创建 `src/controllers/profile.controller.ts` 和路由
-- [ ] 9.6 注册路由：`GET /api/profile`、`PUT /api/profile`、`GET /api/profile/weight-history`、`POST /api/profile/weight`
-- [ ] 9.7 在 `app.ts` 中挂载 profile 路由
+- [x] 9.1 创建 `src/services/profile.service.ts`
+- [x] 9.2 实现 `getProfile(userId)`
+- [x] 9.3 实现 `updateProfile(userId, data)`（触发卡路里目标重算）
+- [x] 9.4 实现 `recordWeight(userId, weight)` 和 `getWeightHistory(userId)`
+- [x] 9.5 创建 `src/controllers/profile.controller.ts` 和路由
+- [x] 9.6 注册路由：`GET /api/profile`、`PUT /api/profile`、`GET /api/profile/weight-history`、`POST /api/profile/weight`
+- [x] 9.7 在 `app.ts` 中挂载 profile 路由
 
 **属性测试**：Property 27（卡路里目标重算确定性）
 
