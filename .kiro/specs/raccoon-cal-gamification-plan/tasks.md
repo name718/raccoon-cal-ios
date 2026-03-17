@@ -53,16 +53,16 @@
 
 ### 任务 3：食物识别与记录 API
 
-- [ ] 3.1 创建 `src/services/logmeal.service.ts`，封装 LogMeal API(令牌：c2c524a7ed34ad36fd4dd124eebda1f4d74321d8) 调用
-- [ ] 3.2 实现图片预处理（Sharp 压缩至 800px 宽，质量 80%）
-- [ ] 3.3 实现识别失败处理（置信度 < 0.3 或空结果返回 `{ foods: [], confidence: 0 }`）
-- [ ] 3.4 创建 `src/services/food.service.ts`，实现饮食记录 CRUD
-- [ ] 3.5 实现 `getDailyCalSummary(userId, date)` 按餐次分组汇总
-- [ ] 3.6 实现 `getNutritionStats(userId, days)` 获取 N 天营养统计
-- [ ] 3.7 创建 `src/controllers/food.controller.ts` 和 `src/routes/food.routes.ts`
-- [ ] 3.8 注册路由：`POST /api/food/recognize`、`POST /api/food/records`、`GET /api/food/records`、`DELETE /api/food/records/:id`、`GET /api/food/stats`
-- [ ] 3.9 在 `app.ts` 中挂载 food 路由
-- [ ] 3.10 保存饮食记录后触发：XP 授予（+10）、HP 检查、浣熊饱食度更新、打卡标记写入 Redis
+- [x] 3.1 创建 `src/services/logmeal.service.ts`，封装 LogMeal API(令牌：c2c524a7ed34ad36fd4dd124eebda1f4d74321d8) 调用
+- [x] 3.2 实现图片预处理（Sharp 压缩至 800px 宽，质量 80%）
+- [x] 3.3 实现识别失败处理（置信度 < 0.3 或空结果返回 `{ foods: [], confidence: 0 }`）
+- [x] 3.4 创建 `src/services/food.service.ts`，实现饮食记录 CRUD
+- [x] 3.5 实现 `getDailyCalSummary(userId, date)` 按餐次分组汇总
+- [x] 3.6 实现 `getNutritionStats(userId, days)` 获取 N 天营养统计
+- [x] 3.7 创建 `src/controllers/food.controller.ts` 和 `src/routes/food.routes.ts`
+- [x] 3.8 注册路由：`POST /api/food/recognize`、`POST /api/food/records`、`GET /api/food/records`、`DELETE /api/food/records/:id`、`GET /api/food/stats`
+- [x] 3.9 在 `app.ts` 中挂载 food 路由
+- [x] 3.10 保存饮食记录后触发：XP 授予（+10）、HP 检查、浣熊饱食度更新、打卡标记写入 Redis
 
 **属性测试**：
 - Property 6（识别失败返回空列表）：模拟低置信度响应
