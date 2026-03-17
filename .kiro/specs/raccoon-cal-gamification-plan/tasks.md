@@ -12,19 +12,19 @@
 
 ### 任务 1：数据库 Schema 扩展与迁移
 
-- [ ] 1.1 在 `schema.prisma` 中新增 `UserProfile` 模型（身高/体重/目标/活动水平/每日卡路里目标）
-- [ ] 1.2 新增 `WeightRecord` 模型（体重历史）
-- [ ] 1.3 新增 `FoodRecord` 模型（饮食记录，含餐次/营养素/图片URL）
-- [ ] 1.4 新增 `GamificationStatus` 模型（XP/等级/HP/Streak/保护盾）
-- [ ] 1.5 新增 `XpTransaction` 模型（XP 流水，含幂等唯一约束）
-- [ ] 1.6 新增 `Pet` 模型（浣熊宠物，含装扮槽位）和 `PetLevelHistory` 模型
+- [x] 1.1 在 `schema.prisma` 中新增 `UserProfile` 模型（身高/体重/目标/活动水平/每日卡路里目标）
+- [x] 1.2 新增 `WeightRecord` 模型（体重历史）
+- [x] 1.3 新增 `FoodRecord` 模型（饮食记录，含餐次/营养素/图片URL）
+- [x] 1.4 新增 `GamificationStatus` 模型（XP/等级/HP/Streak/保护盾）
+- [x] 1.5 新增 `XpTransaction` 模型（XP 流水，含幂等唯一约束）
+- [x] 1.6 新增 `Pet` 模型（浣熊宠物，含装扮槽位）和 `PetLevelHistory` 模型
 - `[DEFERRED]` 升级解锁新外观/3D 装扮道具（等待美术资源）
-- [ ] 1.7 新增 `DailyTask` 模型（每日任务，含唯一约束 userId+taskKey+taskDate）
-- [ ] 1.8 新增 `AchievementDef` 模型（成就定义）和 `UserAchievement` 模型
-- [ ] 1.9 新增 `League` 模型和 `LeagueMember` 模型
-- [ ] 1.10 在 `User` 模型中添加所有新模型的关联关系
-- [ ] 1.11 执行 `prisma migrate dev` 生成迁移文件
-- [ ] 1.12 编写 `seed.ts`，写入 20+ 条成就定义数据和任务池数据
+- [x] 1.7 新增 `DailyTask` 模型（每日任务，含唯一约束 userId+taskKey+taskDate）
+- [x] 1.8 新增 `AchievementDef` 模型（成就定义）和 `UserAchievement` 模型
+- [x] 1.9 新增 `League` 模型和 `LeagueMember` 模型
+- [x] 1.10 在 `User` 模型中添加所有新模型的关联关系
+- [x] 1.11 执行 `prisma migrate dev` 生成迁移文件
+- [x] 1.12 编写 `seed.ts`，写入 20+ 条成就定义数据和任务池数据
 
 **属性测试**：Property 21（任务池不重复性）、Property 22（成就幂等性）
 
