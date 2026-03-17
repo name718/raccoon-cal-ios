@@ -66,3 +66,35 @@ struct CaptchaVerifyRequest: Codable {
 struct CaptchaVerifyResponse: Codable {
     let valid: Bool
 }
+
+// MARK: - 个人资料相关模型
+struct UserProfile: Codable {
+    let id: Int
+    let userId: Int
+    let nickname: String
+    let gender: String
+    let height: Double
+    let weight: Double
+    let age: Int
+    let goal: String
+    let activityLevel: String
+    let dailyCalTarget: Int
+    let createdAt: String
+    let updatedAt: String
+}
+
+struct WeightRecord: Codable {
+    let id: Int
+    let weight: Double
+    let recordedAt: String
+}
+
+struct ProfileUpdateRequest: Codable {
+    let nickname: String?
+    let gender: String?
+    let height: Double?
+    let weight: Double?
+    let age: Int?
+    let goal: String?
+    let activityLevel: String?
+}

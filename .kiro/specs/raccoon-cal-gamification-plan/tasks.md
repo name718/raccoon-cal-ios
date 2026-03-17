@@ -171,13 +171,13 @@
 
 ### 任务 11：数据模型层
 
-- [ ] 11.1 创建 `Models/GamificationModels.swift`（GamificationStatus/XpTransaction）
-- [ ] 11.2 创建 `Models/FoodModels.swift`（FoodRecognitionResult/FoodRecord/MealGroup/NutritionStats）
-- [ ] 11.3 创建 `Models/PetModels.swift`（PetStatus/PetMood/PetLevelEvent）
-- [ ] 11.4 创建 `Models/TaskModels.swift`（DailyTask）
-- [ ] 11.5 创建 `Models/AchievementModels.swift`（Achievement）
-- [ ] 11.6 创建 `Models/LeagueModels.swift`（LeagueInfo/LeagueMember/LeagueSettlement）
-- [ ] 11.7 在 `Models/APIModels.swift` 中新增 UserProfile/WeightRecord/ProfileUpdateRequest
+- [x] 11.1 创建 `Models/GamificationModels.swift`（GamificationStatus/XpTransaction）
+- [x] 11.2 创建 `Models/FoodModels.swift`（FoodRecognitionResult/FoodRecord/MealGroup/NutritionStats）
+- [x] 11.3 创建 `Models/PetModels.swift`（PetStatus/PetMood/PetLevelEvent）
+- [x] 11.4 创建 `Models/TaskModels.swift`（DailyTask）
+- [x] 11.5 创建 `Models/AchievementModels.swift`（Achievement）
+- [x] 11.6 创建 `Models/LeagueModels.swift`（LeagueInfo/LeagueMember/LeagueSettlement）
+- [x] 11.7 在 `Models/APIModels.swift` 中新增 UserProfile/WeightRecord/ProfileUpdateRequest
 
 ---
 
