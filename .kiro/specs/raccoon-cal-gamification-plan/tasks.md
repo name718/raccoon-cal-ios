@@ -158,10 +158,10 @@
 
 ### 任务 10：定时任务（Cron Jobs）
 
-- [ ] 10.1 创建 `src/jobs/dailyReset.job.ts`（每日零点：重置 HP/饱食度/生成任务/检查 Streak）
-- [ ] 10.2 创建 `src/jobs/leagueSettlement.job.ts`（每周日 23:59：联盟结算晋升/降级）
-- [ ] 10.3 创建 `src/jobs/streakCheck.job.ts`（每日 19:00：查询未打卡用户，记录风险状态）
-- [ ] 10.4 在 `app.ts` 的 `startServer()` 中注册所有 cron jobs
+- [x] 10.1 创建 `src/jobs/dailyReset.job.ts`（每日零点：重置 HP/饱食度/生成任务/检查 Streak）
+- [x] 10.2 创建 `src/jobs/leagueSettlement.job.ts`（每周日 23:59：联盟结算晋升/降级）
+- [x] 10.3 创建 `src/jobs/streakCheck.job.ts`（每日 19:00：查询未打卡用户，记录风险状态）
+- [x] 10.4 在 `app.ts` 的 `startServer()` 中注册所有 cron jobs
 
 **属性测试**：Property 16（Streak 连续性计算）、Property 25（联盟结算比例）
 
