@@ -183,12 +183,12 @@
 
 ### 任务 12：APIService 扩展
 
-- [ ] 12.1 在 `APIService.swift` 中新增食物相关接口（recognizeFood/saveFoodRecord/getFoodRecords/deleteFoodRecord/getFoodStats）
-- [ ] 12.2 新增游戏化接口（getGamificationStatus/getPetStatus/interactWithPet/updatePetOutfit）
-- [ ] 12.3 新增任务与成就接口（getDailyTasks/getAchievements）
-- [ ] 12.4 新增联盟接口（getLeague/getLeagueSettlement）
-- [ ] 12.5 新增个人资料接口（getProfile/updateProfile/recordWeight/getWeightHistory）
-- [ ] 12.6 实现 multipart/form-data 图片上传支持（用于 recognizeFood）
+- [x] 12.1 在 `APIService.swift` 中新增食物相关接口（recognizeFood/saveFoodRecord/getFoodRecords/deleteFoodRecord/getFoodStats）
+- [x] 12.2 新增游戏化接口（getGamificationStatus/getPetStatus/interactWithPet/updatePetOutfit）
+- [x] 12.3 新增任务与成就接口（getDailyTasks/getAchievements）
+- [x] 12.4 新增联盟接口（getLeague/getLeagueSettlement）
+- [x] 12.5 新增个人资料接口（getProfile/updateProfile/recordWeight/getWeightHistory）
+- [x] 12.6 实现 multipart/form-data 图片上传支持（用于 recognizeFood）
 
 ---
 

@@ -6,6 +6,7 @@
 //
 
 import Foundation
+import UIKit
 
 class APIService: ObservableObject {
     static let shared = APIService()
@@ -171,6 +172,254 @@ class APIService: ObservableObject {
         return response.data?.valid ?? false
     }
     
+    // MARK: - 食物识别与记录接口
+
+    /// POST /api/food/recognize — 上传 UIImage 识别食物（JPEG 压缩 0.8）
+    func recognizeFood(image: UIImage) async throws -> FoodRecognitionResult {
+        guard let imageData = image.jpegData(compressionQuality: 0.8) else {
+            throw APIServiceError.networkError("无法将图片转换为 JPEG 数据")
+        }
+        return try await recognizeFood(imageData: imageData)
+    }
+
+    /// POST /api/food/recognize — 上传图片识别食物（multipart/form-data）
+    func recognizeFood(imageData: Data, mimeType: String = "image/jpeg") async throws -> FoodRecognitionResult {
+        guard let url = URL(string: baseURL + "/food/recognize") else {
+            throw APIServiceError.invalidURL
+        }
+
+        let boundary = "Boundary-\(UUID().uuidString)"
+        var req = URLRequest(url: url)
+        req.httpMethod = "POST"
+        req.setValue("multipart/form-data; boundary=\(boundary)", forHTTPHeaderField: "Content-Type")
+        if let token = UserDefaults.standard.string(forKey: "auth_token") {
+            req.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
+        }
+
+        var body = Data()
+        body.append("--\(boundary)\r\n".data(using: .utf8)!)
+        body.append("Content-Disposition: form-data; name=\"image\"; filename=\"food.jpg\"\r\n".data(using: .utf8)!)
+        body.append("Content-Type: \(mimeType)\r\n\r\n".data(using: .utf8)!)
+        body.append(imageData)
+        body.append("\r\n--\(boundary)--\r\n".data(using: .utf8)!)
+        req.httpBody = body
+
+        let (data, response) = try await session.data(for: req)
+        guard let httpResponse = response as? HTTPURLResponse else {
+            throw APIServiceError.invalidResponse
+        }
+        if httpResponse.statusCode >= 400 {
+            if let errResp = try? JSONDecoder().decode(APIResponse<String>.self, from: data) {
+                throw APIServiceError.serverError(errResp.error?.message ?? "未知错误")
+            }
+            throw APIServiceError.httpError(httpResponse.statusCode)
+        }
+        let decoded = try JSONDecoder().decode(APIResponse<FoodRecognitionResult>.self, from: data)
+        guard let result = decoded.data else { throw APIServiceError.noData }
+        return result
+    }
+
+    /// POST /api/food/records — 保存一条饮食记录
+    func saveFoodRecord(_ input: SaveFoodRecordRequest) async throws -> FoodRecord {
+        let body = try JSONEncoder().encode(input)
+        let response: APIResponse<FoodRecord> = try await request(
+            endpoint: "/food/records",
+            method: .POST,
+            body: body,
+            responseType: APIResponse<FoodRecord>.self
+        )
+        guard let data = response.data else { throw APIServiceError.noData }
+        return data
+    }
+
+    /// GET /api/food/records?date=YYYY-MM-DD — 获取饮食记录（可按日期过滤）
+    func getFoodRecords(date: String? = nil) async throws -> DailyCalSummary {
+        var endpoint = "/food/records"
+        if let date = date {
+            endpoint += "?date=\(date)"
+        }
+        let response: APIResponse<DailyCalSummary> = try await request(
+            endpoint: endpoint,
+            method: .GET,
+            responseType: APIResponse<DailyCalSummary>.self
+        )
+        guard let data = response.data else { throw APIServiceError.noData }
+        return data
+    }
+
+    /// DELETE /api/food/records/:id — 删除一条饮食记录
+    func deleteFoodRecord(id: Int) async throws {
+        let response: APIResponse<String?> = try await request(
+            endpoint: "/food/records/\(id)",
+            method: .DELETE,
+            responseType: APIResponse<String?>.self
+        )
+        if !response.success {
+            throw APIServiceError.serverError(response.error?.message ?? "删除失败")
+        }
+    }
+
+    /// GET /api/food/stats?days=N — 获取 N 天营养统计
+    func getFoodStats(days: Int = 7) async throws -> NutritionStats {
+        let response: APIResponse<NutritionStats> = try await request(
+            endpoint: "/food/stats?days=\(days)",
+            method: .GET,
+            responseType: APIResponse<NutritionStats>.self
+        )
+        guard let data = response.data else { throw APIServiceError.noData }
+        return data
+    }
+
+    // MARK: - 游戏化接口
+
+    /// GET /api/gamification/status — 获取游戏化状态（XP/等级/HP/Streak）
+    func getGamificationStatus() async throws -> GamificationStatus {
+        let response: APIResponse<GamificationStatus> = try await request(
+            endpoint: "/gamification/status",
+            method: .GET,
+            responseType: APIResponse<GamificationStatus>.self
+        )
+        guard let data = response.data else { throw APIServiceError.noData }
+        return data
+    }
+
+    /// GET /api/pet — 获取浣熊宠物状态（含心情计算）
+    func getPetStatus() async throws -> PetStatus {
+        let response: APIResponse<PetStatus> = try await request(
+            endpoint: "/pet",
+            method: .GET,
+            responseType: APIResponse<PetStatus>.self
+        )
+        guard let data = response.data else { throw APIServiceError.noData }
+        return data
+    }
+
+    /// POST /api/pet/interact — 与浣熊互动（每日一次，+XP）
+    func interactWithPet() async throws -> GamificationStatus {
+        let response: APIResponse<GamificationStatus> = try await request(
+            endpoint: "/pet/interact",
+            method: .POST,
+            responseType: APIResponse<GamificationStatus>.self
+        )
+        guard let data = response.data else { throw APIServiceError.noData }
+        return data
+    }
+
+    /// PUT /api/pet/outfit — 更新浣熊装扮槽位
+    func updatePetOutfit(_ outfit: PetOutfitRequest) async throws -> PetStatus {
+        let body = try JSONEncoder().encode(outfit)
+        let response: APIResponse<PetStatus> = try await request(
+            endpoint: "/pet/outfit",
+            method: .PUT,
+            body: body,
+            responseType: APIResponse<PetStatus>.self
+        )
+        guard let data = response.data else { throw APIServiceError.noData }
+        return data
+    }
+
+    // MARK: - 任务与成就接口
+
+    /// GET /api/tasks/daily?date=YYYY-MM-DD — 获取当日任务列表
+    func getDailyTasks(date: String? = nil) async throws -> DailyTasksResponse {
+        var endpoint = "/tasks/daily"
+        if let date = date {
+            endpoint += "?date=\(date)"
+        }
+        let response: APIResponse<DailyTasksResponse> = try await request(
+            endpoint: endpoint,
+            method: .GET,
+            responseType: APIResponse<DailyTasksResponse>.self
+        )
+        guard let data = response.data else { throw APIServiceError.noData }
+        return data
+    }
+
+    /// GET /api/achievements — 获取全部成就（含解锁状态）
+    func getAchievements() async throws -> [Achievement] {
+        let response: APIResponse<[Achievement]> = try await request(
+            endpoint: "/achievements",
+            method: .GET,
+            responseType: APIResponse<[Achievement]>.self
+        )
+        guard let data = response.data else { throw APIServiceError.noData }
+        return data
+    }
+
+    // MARK: - 联盟接口
+
+    /// GET /api/league/current — 获取当前联盟信息（含 Top 10 排行榜）
+    func getLeague() async throws -> LeagueInfo {
+        let response: APIResponse<LeagueInfo> = try await request(
+            endpoint: "/league/current",
+            method: .GET,
+            responseType: APIResponse<LeagueInfo>.self
+        )
+        guard let data = response.data else { throw APIServiceError.noData }
+        return data
+    }
+
+    /// GET /api/league/settlement — 获取上次联盟结算结果
+    func getLeagueSettlement() async throws -> LeagueSettlement {
+        let response: APIResponse<LeagueSettlement> = try await request(
+            endpoint: "/league/settlement",
+            method: .GET,
+            responseType: APIResponse<LeagueSettlement>.self
+        )
+        guard let data = response.data else { throw APIServiceError.noData }
+        return data
+    }
+
+    // MARK: - 个人资料接口
+
+    /// GET /api/profile — 获取个人资料
+    func getProfile() async throws -> UserProfile {
+        let response: APIResponse<UserProfile> = try await request(
+            endpoint: "/profile",
+            method: .GET,
+            responseType: APIResponse<UserProfile>.self
+        )
+        guard let data = response.data else { throw APIServiceError.noData }
+        return data
+    }
+
+    /// PUT /api/profile — 更新个人资料（触发卡路里目标重算）
+    func updateProfile(_ update: ProfileUpdateRequest) async throws -> UserProfile {
+        let body = try JSONEncoder().encode(update)
+        let response: APIResponse<UserProfile> = try await request(
+            endpoint: "/profile",
+            method: .PUT,
+            body: body,
+            responseType: APIResponse<UserProfile>.self
+        )
+        guard let data = response.data else { throw APIServiceError.noData }
+        return data
+    }
+
+    /// POST /api/profile/weight — 记录体重
+    func recordWeight(_ weight: Double) async throws -> WeightRecord {
+        let body = try JSONEncoder().encode(["weight": weight])
+        let response: APIResponse<WeightRecord> = try await request(
+            endpoint: "/profile/weight",
+            method: .POST,
+            body: body,
+            responseType: APIResponse<WeightRecord>.self
+        )
+        guard let data = response.data else { throw APIServiceError.noData }
+        return data
+    }
+
+    /// GET /api/profile/weight-history — 获取体重历史
+    func getWeightHistory() async throws -> [WeightRecord] {
+        let response: APIResponse<[WeightRecord]> = try await request(
+            endpoint: "/profile/weight-history",
+            method: .GET,
+            responseType: APIResponse<[WeightRecord]>.self
+        )
+        guard let data = response.data else { throw APIServiceError.noData }
+        return data
+    }
+
     // MARK: - 登出
     func logout() {
         UserDefaults.standard.removeObject(forKey: "auth_token")

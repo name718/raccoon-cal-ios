@@ -67,6 +67,21 @@ struct DailyCalSummary: Codable {
     let mealGroups: [MealGroup]
 }
 
+// MARK: - 保存饮食记录请求
+
+struct SaveFoodRecordRequest: Codable {
+    let foodName: String
+    let calories: Double
+    let protein: Double
+    let fat: Double
+    let carbs: Double
+    let fiber: Double
+    let servingSize: Double
+    let mealType: String
+    let imageUrl: String?
+    let recordedAt: String?
+}
+
 // MARK: - 营养统计
 
 /// 单日卡路里数据点（用于折线图）
