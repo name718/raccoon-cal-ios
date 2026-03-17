@@ -100,15 +100,15 @@
 
 ### 任务 6：每日任务 API
 
-- [ ] 6.1 创建 `src/services/task.service.ts`
-- [ ] 6.2 定义任务池（6 种任务类型，含 taskKey/title/xpReward）
-- [ ] 6.3 实现 `generateDailyTasks(userId, date)`（从任务池随机抽 3 条，不重复）
-- [ ] 6.4 实现 `getDailyTasks(userId, date)`（若当日无任务则自动生成）
-- [ ] 6.5 实现 `checkAndCompleteTasks(userId, date)`（自动检查并完成满足条件的任务）
-- [ ] 6.6 实现全勤奖励逻辑（3 条全完成额外 +30 XP）
-- [ ] 6.7 创建 `src/controllers/task.controller.ts` 和路由
-- [ ] 6.8 注册路由：`GET /api/tasks/daily`、`POST /api/tasks/:id/complete`
-- [ ] 6.9 在 `app.ts` 中挂载 task 路由
+- [x] 6.1 创建 `src/services/task.service.ts`
+- [x] 6.2 定义任务池（6 种任务类型，含 taskKey/title/xpReward）
+- [x] 6.3 实现 `generateDailyTasks(userId, date)`（从任务池随机抽 3 条，不重复）
+- [x] 6.4 实现 `getDailyTasks(userId, date)`（若当日无任务则自动生成）
+- [x] 6.5 实现 `checkAndCompleteTasks(userId, date)`（自动检查并完成满足条件的任务）
+- [x] 6.6 实现全勤奖励逻辑（3 条全完成额外 +30 XP）
+- [x] 6.7 创建 `src/controllers/task.controller.ts` 和路由
+- [x] 6.8 注册路由：`GET /api/tasks/daily`、`POST /api/tasks/:id/complete`
+- [x] 6.9 在 `app.ts` 中挂载 task 路由
 
 **属性测试**：Property 21（每日任务生成不重复性）、Property 5（任务完成进度计算）
 
