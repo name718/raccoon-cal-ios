@@ -129,14 +129,14 @@
 
 ### 任务 8：联盟排行榜 API
 
-- [ ] 8.1 创建 `src/services/league.service.ts`
-- [ ] 8.2 实现联盟分配逻辑（按等级分配层级，每组上限 30 人）
-- [ ] 8.3 实现 `getLeagueInfo(userId)`（含 Redis Sorted Set 排行榜，Top 10）
-- [ ] 8.4 实现 `getLeagueSettlement(userId)`（获取上次结算结果）
-- [ ] 8.5 实现排行榜隐私过滤（只返回 nickname/petAvatarMood/weeklyXp，不含 email/phone）
-- [ ] 8.6 创建 `src/controllers/league.controller.ts` 和路由
-- [ ] 8.7 注册路由：`GET /api/league/current`、`GET /api/league/settlement`
-- [ ] 8.8 在 `app.ts` 中挂载 league 路由
+- [x] 8.1 创建 `src/services/league.service.ts`
+- [x] 8.2 实现联盟分配逻辑（按等级分配层级，每组上限 30 人）
+- [x] 8.3 实现 `getLeagueInfo(userId)`（含 Redis Sorted Set 排行榜，Top 10）
+- [x] 8.4 实现 `getLeagueSettlement(userId)`（获取上次结算结果）
+- [x] 8.5 实现排行榜隐私过滤（只返回 nickname/petAvatarMood/weeklyXp，不含 email/phone）
+- [x] 8.6 创建 `src/controllers/league.controller.ts` 和路由
+- [x] 8.7 注册路由：`GET /api/league/current`、`GET /api/league/settlement`
+- [x] 8.8 在 `app.ts` 中挂载 league 路由
 
 **属性测试**：Property 24（联盟分配规则）、Property 25（晋升/降级比例）、Property 26（隐私保护）
 
