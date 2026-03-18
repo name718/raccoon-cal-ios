@@ -78,14 +78,16 @@ struct ProfileView: View {
 
                 Color.clear
                     .frame(width: 0, height: 0)
-                    .alert("加载失败", isPresented: Binding(
-                        get: { errorMessage != nil },
-                        set: { if !$0 { errorMessage = nil } }
-                    )) {
-                        Button("确定", role: .cancel) { errorMessage = nil }
-                    } message: {
-                        Text(errorMessage ?? "")
-                    }
+                    .appDialog(
+                        isPresented: Binding(
+                            get: { errorMessage != nil },
+                            set: { if !$0 { errorMessage = nil } }
+                        ),
+                        title: "加载失败",
+                        message: errorMessage ?? "",
+                        tone: .error,
+                        primaryAction: AppDialogAction("确定") { errorMessage = nil }
+                    )
             }
             .navigationTitle("我的")
             .navigationBarTitleDisplayMode(.inline)
@@ -105,12 +107,14 @@ struct ProfileView: View {
                     }
                 }
             }
-            .alert("确认退出", isPresented: $showLogoutAlert) {
-                Button("取消", role: .cancel) {}
-                Button("退出", role: .destructive) { userManager.logout() }
-            } message: {
-                Text("确定要退出登录吗？")
-            }
+            .appDialog(
+                isPresented: $showLogoutAlert,
+                title: "确认退出",
+                message: "确定要退出登录吗？",
+                tone: .warning,
+                primaryAction: AppDialogAction("退出", role: .destructive) { userManager.logout() },
+                secondaryAction: AppDialogAction("取消", role: .cancel)
+            )
         }
         .task {
             await loadAllData()

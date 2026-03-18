@@ -132,11 +132,12 @@ struct ProfileEditView: View {
                     }
                 }
             }
-            .alert("保存失败", isPresented: $showError) {
-                Button("确定", role: .cancel) {}
-            } message: {
-                Text(errorMessage)
-            }
+            .appDialog(
+                isPresented: $showError,
+                title: "保存失败",
+                message: errorMessage,
+                tone: .error
+            )
         }
     }
 
@@ -152,8 +153,8 @@ struct ProfileEditView: View {
                             Spacer()
                             TextField("请输入昵称", text: $nickname)
                                 .multilineTextAlignment(.trailing)
-                                .font(.system(size: 14))
-                                .foregroundColor(AppTheme.textPrimary)
+                                .appInputFieldStyle()
+                                .frame(maxWidth: 180)
                         }
                     } header: {
                         sectionHeader("基本信息")

@@ -321,7 +321,7 @@ struct FoodEditFormView: View {
                 // MARK: Food name
                 Section(header: Text("食物名称")) {
                     TextField("食物名称", text: $foodName)
-                        .foregroundColor(AppTheme.textPrimary)
+                        .appInputFieldStyle()
                 }
 
                 // MARK: Serving size
@@ -344,8 +344,8 @@ struct FoodEditFormView: View {
                             .keyboardType(.decimalPad)
                             .multilineTextAlignment(.center)
                             .font(.title3.bold())
-                            .foregroundColor(AppTheme.textPrimary)
                             .frame(width: 80)
+                            .appInputFieldStyle()
                             .onChange(of: servingSize) { newVal in
                                 servingSize = min(9999, max(1, newVal))
                             }
@@ -502,30 +502,15 @@ struct RecognitionFailedView: View {
                     TextField("例如：米饭、鸡胸肉…", text: $foodName)
                         .focused($isTextFieldFocused)
                         .font(.body)
-                        .foregroundColor(AppTheme.textPrimary)
-                        .padding(.horizontal, 14)
-                        .padding(.vertical, 12)
-                        .background(Color.white)
-                        .clipShape(RoundedRectangle(cornerRadius: 10, style: .continuous))
-                        .overlay(
-                            RoundedRectangle(cornerRadius: 10, style: .continuous)
-                                .stroke(isTextFieldFocused ? AppTheme.primary : Color.gray.opacity(0.25), lineWidth: 1.5)
-                        )
+                        .appInputFieldStyle()
                         .submitLabel(.done)
                         .onSubmit { confirmManualEntry() }
 
                     Button(action: confirmManualEntry) {
                         Text("确认")
-                            .font(.system(size: 15, weight: .semibold))
-                            .foregroundColor(.white)
-                            .padding(.horizontal, 18)
-                            .padding(.vertical, 12)
-                            .background(foodName.trimmingCharacters(in: .whitespaces).isEmpty
-                                        ? Color.gray.opacity(0.4)
-                                        : AppTheme.primary)
-                            .clipShape(RoundedRectangle(cornerRadius: 10, style: .continuous))
                     }
                     .disabled(foodName.trimmingCharacters(in: .whitespaces).isEmpty)
+                    .appButtonStyle(kind: .primary, fullWidth: false)
                     .accessibilityLabel("确认手动输入食物名称")
                 }
             }

@@ -196,16 +196,18 @@ struct CameraView: View {
             resultSheetView(for: result)
         }
         // 17.9 — 权限引导弹窗
-        .alert("需要相机权限", isPresented: $showPermissionAlert) {
-            Button("去设置") {
+        .appDialog(
+            isPresented: $showPermissionAlert,
+            title: "需要相机权限",
+            message: "RaccoonCal 需要访问您的相机来拍摄食物照片，请在设置中允许相机访问。",
+            tone: .warning,
+            primaryAction: AppDialogAction("去设置") {
                 if let url = URL(string: UIApplication.openSettingsURLString) {
                     UIApplication.shared.open(url)
                 }
-            }
-            Button("取消", role: .cancel) {}
-        } message: {
-            Text("RaccoonCal 需要访问您的相机来拍摄食物照片，请在设置中允许相机访问。")
-        }
+            },
+            secondaryAction: AppDialogAction("取消", role: .cancel)
+        )
         .onAppear {
             startSession()
         }

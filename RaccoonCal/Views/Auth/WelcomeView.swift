@@ -43,26 +43,16 @@ struct WelcomeView: View {
                             showPrivacySheet = true
                         }) {
                             Text("已有账号？登录")
-                                .font(.headline)
-                                .foregroundColor(.white)
-                                .frame(maxWidth: .infinity)
-                                .padding()
-                                .background(AppTheme.primary)
-                                .cornerRadius(12)
                         }
+                        .appButtonStyle()
                         
                         // 第一次来 app - 马上开始按钮
                         Button(action: {
                             navigateToOnboarding = true
                         }) {
                             Text("第一次来？马上开始")
-                                .font(.headline)
-                                .foregroundColor(AppTheme.primary)
-                                .frame(maxWidth: .infinity)
-                                .padding()
-                                .background(AppTheme.primary.opacity(0.1))
-                                .cornerRadius(12)
                         }
+                        .appButtonStyle(kind: .secondary)
                     }
                     .padding(.horizontal, 30)
                     .padding(.bottom, 50)

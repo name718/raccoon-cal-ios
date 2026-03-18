@@ -70,25 +70,17 @@ struct CaptchaView: View {
             // 验证码输入框
             HStack {
                 TextField("请输入验证码", text: $captchaCode)
-                    .textFieldStyle(.plain)
-                    .padding()
-                    .background(Color.gray.opacity(0.1))
-                    .cornerRadius(8)
                     .autocapitalization(.allCharacters)
                     .disableAutocorrection(true)
+                    .appInputFieldStyle(isInvalid: showError)
                 
                 Button("验证") {
                     Task {
                         await verifyCaptcha()
                     }
                 }
-                .font(.body)
-                .foregroundColor(.white)
-                .padding(.horizontal, 16)
-                .padding(.vertical, 12)
-                .background(captchaCode.isEmpty ? Color.gray : AppTheme.primary)
-                .cornerRadius(8)
                 .disabled(captchaCode.isEmpty)
+                .appButtonStyle(kind: .primary, fullWidth: false)
             }
             
             if showError {

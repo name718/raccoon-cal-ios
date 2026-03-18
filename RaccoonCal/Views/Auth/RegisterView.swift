@@ -55,15 +55,8 @@ struct RegisterView: View {
                             .foregroundColor(.secondary)
                         
                         TextField("请输入用户名（3-20个字符）", text: $username)
-                            .textFieldStyle(.plain)
-                            .padding()
-                            .background(Color.gray.opacity(0.1))
-                            .cornerRadius(10)
                             .autocapitalization(.none)
-                            .overlay(
-                                RoundedRectangle(cornerRadius: 10)
-                                    .stroke(usernameValidationColor, lineWidth: 1)
-                            )
+                            .appInputFieldStyle(isInvalid: !username.isEmpty && !isValidUsername(username))
                         
                         if !username.isEmpty && !isValidUsername(username) {
                             Text("用户名需要3-20个字符，只能包含字母和数字")
@@ -79,16 +72,9 @@ struct RegisterView: View {
                             .foregroundColor(.secondary)
                         
                         TextField("请输入邮箱", text: $email)
-                            .textFieldStyle(.plain)
-                            .padding()
-                            .background(Color.gray.opacity(0.1))
-                            .cornerRadius(10)
                             .autocapitalization(.none)
                             .keyboardType(.emailAddress)
-                            .overlay(
-                                RoundedRectangle(cornerRadius: 10)
-                                    .stroke(emailValidationColor, lineWidth: 1)
-                            )
+                            .appInputFieldStyle(isInvalid: !email.isEmpty && !isValidEmail(email))
                         
                         if !email.isEmpty && !isValidEmail(email) {
                             Text("请输入有效的邮箱地址")
@@ -104,14 +90,7 @@ struct RegisterView: View {
                             .foregroundColor(.secondary)
                         
                         SecureField("请输入密码（至少6位）", text: $password)
-                            .textFieldStyle(.plain)
-                            .padding()
-                            .background(Color.gray.opacity(0.1))
-                            .cornerRadius(10)
-                            .overlay(
-                                RoundedRectangle(cornerRadius: 10)
-                                    .stroke(passwordValidationColor, lineWidth: 1)
-                            )
+                            .appInputFieldStyle(isInvalid: !password.isEmpty && password.count < 6)
                         
                         if !password.isEmpty && password.count < 6 {
                             Text("密码至少需要6位")
@@ -127,14 +106,7 @@ struct RegisterView: View {
                             .foregroundColor(.secondary)
                         
                         SecureField("请再次输入密码", text: $confirmPassword)
-                            .textFieldStyle(.plain)
-                            .padding()
-                            .background(Color.gray.opacity(0.1))
-                            .cornerRadius(10)
-                            .overlay(
-                                RoundedRectangle(cornerRadius: 10)
-                                    .stroke(confirmPasswordValidationColor, lineWidth: 1)
-                            )
+                            .appInputFieldStyle(isInvalid: !confirmPassword.isEmpty && password != confirmPassword)
                         
                         if !confirmPassword.isEmpty && password != confirmPassword {
                             Text("两次输入的密码不一致")
@@ -187,18 +159,13 @@ struct RegisterView: View {
                         if isRegistering {
                             ProgressView()
                                 .scaleEffect(0.8)
-                                .foregroundColor(.white)
+                                .tint(.white)
                         }
                         Text(isRegistering ? "注册中..." : "注册")
                     }
-                    .font(.headline)
-                    .foregroundColor(.white)
-                    .frame(maxWidth: .infinity)
-                    .padding()
-                    .background(isFormValid ? AppTheme.primary : Color.gray)
-                    .cornerRadius(12)
                 }
                 .disabled(!isFormValid || isRegistering)
+                .appButtonStyle()
                 .padding(.horizontal, 30)
                 
                 // 冷却时间提示
@@ -233,15 +200,17 @@ struct RegisterView: View {
             .hidden()
         }
         .navigationBarTitleDisplayMode(.inline)
-        .alert("注册提示", isPresented: $showAlert) {
-            Button("确定", role: .cancel) { 
+        .appDialog(
+            isPresented: $showAlert,
+            title: userManager.isLoggedIn ? "注册成功" : "注册失败",
+            message: alertMessage,
+            tone: userManager.isLoggedIn ? .success : .error,
+            primaryAction: AppDialogAction("确定") {
                 if userManager.isLoggedIn {
                     navigateToMain = true
                 }
             }
-        } message: {
-            Text(alertMessage)
-        }
+        )
     }
     
     private var isFormValid: Bool {
@@ -257,34 +226,6 @@ struct RegisterView: View {
         }
         
         return basicValid
-    }
-    
-    private var usernameValidationColor: Color {
-        if username.isEmpty {
-            return Color.clear
-        }
-        return isValidUsername(username) ? AppTheme.primary : Color.red
-    }
-    
-    private var emailValidationColor: Color {
-        if email.isEmpty {
-            return Color.clear
-        }
-        return isValidEmail(email) ? AppTheme.primary : Color.red
-    }
-    
-    private var passwordValidationColor: Color {
-        if password.isEmpty {
-            return Color.clear
-        }
-        return password.count >= 6 ? AppTheme.primary : Color.red
-    }
-    
-    private var confirmPasswordValidationColor: Color {
-        if confirmPassword.isEmpty {
-            return Color.clear
-        }
-        return password == confirmPassword ? AppTheme.primary : Color.red
     }
     
     private func isValidUsername(_ username: String) -> Bool {

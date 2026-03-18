@@ -167,14 +167,16 @@ struct HomeView: View {
             .navigationTitle("今日概览")
             .navigationBarTitleDisplayMode(.inline)
         }
-        .alert("请求失败", isPresented: Binding(
-            get: { errorMessage != nil },
-            set: { if !$0 { errorMessage = nil } }
-        )) {
-            Button("确定", role: .cancel) { errorMessage = nil }
-        } message: {
-            Text(errorMessage ?? "")
-        }
+        .appDialog(
+            isPresented: Binding(
+                get: { errorMessage != nil },
+                set: { if !$0 { errorMessage = nil } }
+            ),
+            title: "请求失败",
+            message: errorMessage ?? "",
+            tone: .error,
+            primaryAction: AppDialogAction("确定") { errorMessage = nil }
+        )
         .task {
             await loadData()
         }

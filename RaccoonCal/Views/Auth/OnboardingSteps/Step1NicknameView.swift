@@ -35,10 +35,7 @@ struct Step1NicknameView: View {
                         .foregroundColor(.secondary)
                     
                     TextField("输入你的昵称", text: $nickname)
-                        .textFieldStyle(.plain)
-                        .padding()
-                        .background(AppTheme.primaryLight.opacity(0.3))
-                        .cornerRadius(16)
+                        .appInputFieldStyle()
                         .padding(.horizontal, 40)
                     
                     Button(action: {
@@ -49,14 +46,9 @@ struct Step1NicknameView: View {
                         }
                     }) {
                         Text("下一步")
-                            .font(.headline)
-                            .foregroundColor(.white)
-                            .frame(maxWidth: .infinity)
-                            .padding()
-                            .background(nickname.isEmpty ? Color.gray : AppTheme.primary)
-                            .cornerRadius(12)
                     }
                     .disabled(nickname.isEmpty)
+                    .appButtonStyle()
                     .padding(.horizontal, 40)
                 }
             } else {
@@ -82,23 +74,13 @@ struct Step1NicknameView: View {
                             }
                         }) {
                             Text("改一下")
-                                .font(.body)
-                                .foregroundColor(AppTheme.primary)
-                                .frame(maxWidth: .infinity)
-                                .padding()
-                                .background(AppTheme.primary.opacity(0.1))
-                                .cornerRadius(12)
                         }
+                        .appButtonStyle(kind: .secondary)
                         
                         Button(action: onNext) {
                             Text("超棒！")
-                                .font(.headline)
-                                .foregroundColor(.white)
-                                .frame(maxWidth: .infinity)
-                                .padding()
-                                .background(AppTheme.primary)
-                                .cornerRadius(12)
                         }
+                        .appButtonStyle()
                     }
                     .padding(.horizontal, 40)
                 }

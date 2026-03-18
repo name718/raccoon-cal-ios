@@ -128,38 +128,44 @@ struct RecordView: View {
 
                 Color.clear
                     .frame(width: 0, height: 0)
-                    .alert("加载失败", isPresented: Binding(
-                        get: { loadErrorMessage != nil },
-                        set: { if !$0 { loadErrorMessage = nil } }
-                    )) {
-                        Button("确定", role: .cancel) { loadErrorMessage = nil }
-                    } message: {
-                        Text(loadErrorMessage ?? "")
-                    }
+                    .appDialog(
+                        isPresented: Binding(
+                            get: { loadErrorMessage != nil },
+                            set: { if !$0 { loadErrorMessage = nil } }
+                        ),
+                        title: "加载失败",
+                        message: loadErrorMessage ?? "",
+                        tone: .error,
+                        primaryAction: AppDialogAction("确定") { loadErrorMessage = nil }
+                    )
             }
             .navigationTitle("饮食记录")
             .navigationBarTitleDisplayMode(.inline)
         }
-        // 18.4 删除确认弹窗
-        .alert("删除记录", isPresented: $showDeleteConfirm, presenting: recordToDelete) { record in
-            Button("删除", role: .destructive) {
-                Task { await deleteRecord(record) }
-            }
-            Button("取消", role: .cancel) {
+        .appDialog(
+            isPresented: $showDeleteConfirm,
+            title: "删除记录",
+            message: recordToDelete.map { "确定要删除「\($0.foodName)」吗？删除后将重新计算当日卡路里。" } ?? "",
+            tone: .warning,
+            primaryAction: AppDialogAction("删除", role: .destructive) {
+                if let record = recordToDelete {
+                    Task { await deleteRecord(record) }
+                }
+            },
+            secondaryAction: AppDialogAction("取消", role: .cancel) {
                 recordToDelete = nil
             }
-        } message: { record in
-            Text("确定要删除「\(record.foodName)」吗？删除后将重新计算当日卡路里。")
-        }
-        // 18.4 删除失败错误提示
-        .alert("删除失败", isPresented: Binding(
-            get: { deleteErrorMessage != nil },
-            set: { if !$0 { deleteErrorMessage = nil } }
-        )) {
-            Button("确定", role: .cancel) { deleteErrorMessage = nil }
-        } message: {
-            Text(deleteErrorMessage ?? "")
-        }
+        )
+        .appDialog(
+            isPresented: Binding(
+                get: { deleteErrorMessage != nil },
+                set: { if !$0 { deleteErrorMessage = nil } }
+            ),
+            title: "删除失败",
+            message: deleteErrorMessage ?? "",
+            tone: .error,
+            primaryAction: AppDialogAction("确定") { deleteErrorMessage = nil }
+        )
         .task {
             await loadAll()
         }

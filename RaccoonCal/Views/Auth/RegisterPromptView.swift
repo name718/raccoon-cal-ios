@@ -48,13 +48,8 @@ struct RegisterPromptView: View {
                     navigateToRegister = true
                 }) {
                     Text("注册账号")
-                        .font(.headline)
-                        .foregroundColor(.white)
-                        .frame(maxWidth: .infinity)
-                        .padding()
-                        .background(AppTheme.primary)
-                        .cornerRadius(12)
                 }
+                .appButtonStyle()
                 
                 // 跳过按钮
                 Button(action: {

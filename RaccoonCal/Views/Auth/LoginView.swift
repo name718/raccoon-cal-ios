@@ -53,11 +53,8 @@ struct LoginView: View {
                             .foregroundColor(.secondary)
                         
                         TextField("请输入用户名/邮箱/手机号", text: $identifier)
-                            .textFieldStyle(.plain)
-                            .padding()
-                            .background(Color.gray.opacity(0.1))
-                            .cornerRadius(10)
                             .autocapitalization(.none)
+                            .appInputFieldStyle()
                     }
                     
                     // 密码输入框
@@ -67,10 +64,7 @@ struct LoginView: View {
                             .foregroundColor(.secondary)
                         
                         SecureField("请输入密码", text: $password)
-                            .textFieldStyle(.plain)
-                            .padding()
-                            .background(Color.gray.opacity(0.1))
-                            .cornerRadius(10)
+                            .appInputFieldStyle()
                     }
                     
                     // 验证码（如果需要）
@@ -117,18 +111,13 @@ struct LoginView: View {
                         if isLoggingIn {
                             ProgressView()
                                 .scaleEffect(0.8)
-                                .foregroundColor(.white)
+                                .tint(.white)
                         }
                         Text(isLoggingIn ? "登录中..." : "登录")
                     }
-                    .font(.headline)
-                    .foregroundColor(.white)
-                    .frame(maxWidth: .infinity)
-                    .padding()
-                    .background(isFormValid ? AppTheme.primary : Color.gray)
-                    .cornerRadius(12)
                 }
                 .disabled(!isFormValid || isLoggingIn)
+                .appButtonStyle()
                 .padding(.horizontal, 30)
                 
                 // 冷却时间提示
@@ -148,15 +137,17 @@ struct LoginView: View {
             .hidden()
         }
         .navigationBarTitleDisplayMode(.inline)
-        .alert("登录提示", isPresented: $showAlert) {
-            Button("确定", role: .cancel) {
+        .appDialog(
+            isPresented: $showAlert,
+            title: userManager.isLoggedIn ? "登录成功" : "登录失败",
+            message: alertMessage,
+            tone: userManager.isLoggedIn ? .success : .error,
+            primaryAction: AppDialogAction("确定") {
                 if userManager.isLoggedIn {
                     navigateToMain = true
                 }
             }
-        } message: {
-            Text(alertMessage)
-        }
+        )
     }
     
     private var isFormValid: Bool {

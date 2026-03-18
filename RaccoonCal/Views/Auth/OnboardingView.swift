@@ -78,14 +78,16 @@ struct OnboardingView: View {
             .hidden()
         }
         .navigationBarHidden(true)
-        .alert("确定要退出吗？", isPresented: $showExitAlert) {
-            Button("继续填写", role: .cancel) { }
-            Button("退出", role: .destructive) {
+        .appDialog(
+            isPresented: $showExitAlert,
+            title: "确定要退出吗？",
+            message: "退出后你填写的信息将不会被保存哦",
+            tone: .warning,
+            primaryAction: AppDialogAction("退出", role: .destructive) {
                 navigateToMain = true
-            }
-        } message: {
-            Text("退出后你填写的信息将不会被保存哦")
-        }
+            },
+            secondaryAction: AppDialogAction("继续填写", role: .cancel)
+        )
     }
     
     @ViewBuilder
