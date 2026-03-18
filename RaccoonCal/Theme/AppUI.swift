@@ -249,6 +249,62 @@ private struct AppDialogModifier: ViewModifier {
     }
 }
 
+private struct AppDelayedLoadingOverlayModifier: ViewModifier {
+    let isLoading: Bool
+    let message: String
+    let delayNanoseconds: UInt64
+
+    @State private var shouldShowOverlay = false
+
+    func body(content: Content) -> some View {
+        ZStack {
+            content
+                .disabled(shouldShowOverlay)
+
+            if shouldShowOverlay {
+                ZStack {
+                    Color.black.opacity(0.12)
+                        .ignoresSafeArea()
+
+                    VStack(spacing: 14) {
+                        ProgressView()
+                            .progressViewStyle(.circular)
+                            .tint(AppTheme.primary)
+                            .scaleEffect(1.15)
+
+                        Text(message)
+                            .font(.system(size: 15, weight: .semibold))
+                            .foregroundColor(AppTheme.textPrimary)
+                            .multilineTextAlignment(.center)
+                    }
+                    .padding(.horizontal, 24)
+                    .padding(.vertical, 20)
+                    .background(
+                        RoundedRectangle(cornerRadius: 24, style: .continuous)
+                            .fill(.ultraThinMaterial)
+                            .overlay(
+                                RoundedRectangle(cornerRadius: 24, style: .continuous)
+                                    .stroke(Color.white.opacity(0.85), lineWidth: 1)
+                            )
+                    )
+                    .shadow(color: Color.black.opacity(0.14), radius: 20, x: 0, y: 8)
+                    .padding(.horizontal, 40)
+                }
+                .transition(.opacity.combined(with: .scale(scale: 0.96)))
+            }
+        }
+        .task(id: isLoading) {
+            shouldShowOverlay = false
+            guard isLoading else { return }
+
+            try? await Task.sleep(nanoseconds: delayNanoseconds)
+            guard !Task.isCancelled, isLoading else { return }
+            shouldShowOverlay = true
+        }
+        .animation(.easeInOut(duration: 0.2), value: shouldShowOverlay)
+    }
+}
+
 extension View {
     func appButtonStyle(kind: AppButtonKind = .primary, fullWidth: Bool = true) -> some View {
         buttonStyle(AppRoundedButtonStyle(kind: kind, fullWidth: fullWidth))
@@ -274,6 +330,20 @@ extension View {
                 tone: tone,
                 primaryAction: primaryAction,
                 secondaryAction: secondaryAction
+                )
+        )
+    }
+
+    func delayedLoadingOverlay(
+        isLoading: Bool,
+        message: String = "加载中...",
+        delayNanoseconds: UInt64 = 2_000_000_000
+    ) -> some View {
+        modifier(
+            AppDelayedLoadingOverlayModifier(
+                isLoading: isLoading,
+                message: message,
+                delayNanoseconds: delayNanoseconds
             )
         )
     }

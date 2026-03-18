@@ -166,6 +166,10 @@ struct RecordView: View {
             tone: .error,
             primaryAction: AppDialogAction("确定") { deleteErrorMessage = nil }
         )
+        .delayedLoadingOverlay(
+            isLoading: isLoading || isLoadingStats,
+            message: "正在加载饮食记录..."
+        )
         .task {
             await loadAll()
         }

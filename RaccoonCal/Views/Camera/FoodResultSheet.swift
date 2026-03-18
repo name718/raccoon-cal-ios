@@ -19,7 +19,7 @@ struct FoodResultSheet: View {
     /// Called when the user confirms a manually-entered food name.
     var onManualEntry: ((FoodRecognitionResult) -> Void)? = nil
 
-    @EnvironmentObject private var gamificationManager: GamificationManager
+    @StateObject private var gamificationManager = GamificationManager.shared
 
     // Task 17.6 — editable copy of foods so edits can be reflected in the list
     @State private var editableFoods: [RecognizedFood]

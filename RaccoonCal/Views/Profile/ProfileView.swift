@@ -116,6 +116,10 @@ struct ProfileView: View {
                 secondaryAction: AppDialogAction("取消", role: .cancel)
             )
         }
+        .delayedLoadingOverlay(
+            isLoading: isLoading || isLoadingStats || gamificationManager.isLoading,
+            message: "正在加载个人数据..."
+        )
         .task {
             await loadAllData()
             await loadSettlementIfNeeded()

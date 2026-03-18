@@ -7,6 +7,137 @@ import SwiftUI
 import AVFoundation
 import PhotosUI
 
+// MARK: - CameraSessionController
+
+final class CameraSessionController: ObservableObject {
+    @Published private(set) var permissionStatus: AVAuthorizationStatus =
+        CameraSessionController.currentPermissionStatus()
+
+    let session: AVCaptureSession?
+    private let photoOutput: AVCapturePhotoOutput?
+    private let sessionQueue = DispatchQueue(
+        label: "com.raccooncal.camera.session",
+        qos: .userInitiated
+    )
+
+    private var isConfigured = false
+    private var captureDelegate: PhotoCaptureDelegate?
+
+    init() {
+        #if targetEnvironment(simulator)
+        self.session = nil
+        self.photoOutput = nil
+        #else
+        let session = AVCaptureSession()
+        session.sessionPreset = .photo
+        self.session = session
+        self.photoOutput = AVCapturePhotoOutput()
+        #endif
+    }
+
+    @MainActor
+    func refreshPermissionStatus() {
+        permissionStatus = Self.currentPermissionStatus()
+    }
+
+    func ensureSessionRunning() {
+        guard let session else { return }
+        let status = AVCaptureDevice.authorizationStatus(for: .video)
+
+        Task { @MainActor in
+            permissionStatus = status
+        }
+
+        switch status {
+        case .authorized:
+            sessionQueue.async { [weak self] in
+                self?.configureSessionIfNeeded()
+                guard let self, !session.isRunning else { return }
+                session.startRunning()
+            }
+
+        case .notDetermined:
+            Task {
+                let granted = await AVCaptureDevice.requestAccess(for: .video)
+                await MainActor.run {
+                    self.permissionStatus = granted ? .authorized : .denied
+                }
+
+                guard granted else { return }
+                self.ensureSessionRunning()
+            }
+
+        case .denied, .restricted:
+            break
+
+        @unknown default:
+            break
+        }
+    }
+
+    func stopSession() {
+        sessionQueue.async { [weak self] in
+            guard let self, let session = self.session, session.isRunning else { return }
+            session.stopRunning()
+        }
+    }
+
+    func capturePhoto() async -> Data? {
+        await withCheckedContinuation { continuation in
+            sessionQueue.async { [weak self] in
+                guard let self,
+                      let session = self.session,
+                      let photoOutput = self.photoOutput,
+                      session.isRunning else {
+                    continuation.resume(returning: nil)
+                    return
+                }
+
+                let delegate = PhotoCaptureDelegate(continuation: continuation) { [weak self] in
+                    self?.captureDelegate = nil
+                }
+                self.captureDelegate = delegate
+
+                let settings = AVCapturePhotoSettings()
+                photoOutput.capturePhoto(with: settings, delegate: delegate)
+            }
+        }
+    }
+
+    private func configureSessionIfNeeded() {
+        guard !isConfigured, let session, let photoOutput else { return }
+
+        session.beginConfiguration()
+        defer {
+            session.commitConfiguration()
+            isConfigured = true
+        }
+
+        if session.inputs.isEmpty,
+           let device = AVCaptureDevice.default(
+               .builtInWideAngleCamera,
+               for: .video,
+               position: .back
+           ),
+           let input = try? AVCaptureDeviceInput(device: device),
+           session.canAddInput(input) {
+            session.addInput(input)
+        }
+
+        if !session.outputs.contains(photoOutput), session.canAddOutput(photoOutput) {
+            session.addOutput(photoOutput)
+        }
+    }
+
+    private static func currentPermissionStatus() -> AVAuthorizationStatus {
+        #if targetEnvironment(simulator)
+        return .denied
+        #else
+        return AVCaptureDevice.authorizationStatus(for: .video)
+        #endif
+    }
+}
+
 // MARK: - CameraPreviewView (UIViewRepresentable)
 
 struct CameraPreviewView: UIViewRepresentable {
@@ -35,9 +166,14 @@ struct CameraPreviewView: UIViewRepresentable {
 
 final class PhotoCaptureDelegate: NSObject, AVCapturePhotoCaptureDelegate {
     private let continuation: CheckedContinuation<Data?, Never>
+    private let onFinish: (() -> Void)?
 
-    init(continuation: CheckedContinuation<Data?, Never>) {
+    init(
+        continuation: CheckedContinuation<Data?, Never>,
+        onFinish: (() -> Void)? = nil
+    ) {
         self.continuation = continuation
+        self.onFinish = onFinish
     }
 
     func photoOutput(_ output: AVCapturePhotoOutput, didFinishProcessingPhoto photo: AVCapturePhoto, error: Error?) {
@@ -46,6 +182,7 @@ final class PhotoCaptureDelegate: NSObject, AVCapturePhotoCaptureDelegate {
         } else {
             continuation.resume(returning: photo.fileDataRepresentation())
         }
+        onFinish?()
     }
 }
 
@@ -103,10 +240,12 @@ struct PhotoLibraryPicker: UIViewControllerRepresentable {
 
 struct CameraView: View {
 
-    @EnvironmentObject var gamificationManager: GamificationManager
+    @Environment(\.openURL) private var openURL
+    @Environment(\.scenePhase) private var scenePhase
 
     // MARK: - State
 
+    @StateObject private var cameraController = CameraSessionController()
     @State private var capturedImage: UIImage? = nil
     @State private var recognitionResult: FoodRecognitionResult? = nil
     @State private var isLoading: Bool = false
@@ -114,30 +253,13 @@ struct CameraView: View {
     @State private var selectedMealType: String = MealType.lunch.rawValue
     @State private var showPhotoPicker: Bool = false
 
-    // 17.9 — 相机权限状态
-    @State private var cameraPermissionStatus: AVAuthorizationStatus =
-        AVCaptureDevice.authorizationStatus(for: .video)
-    @State private var showPermissionAlert: Bool = false
-
-    // MARK: - Camera Session
-
-    private let captureSession: AVCaptureSession = {
-        let session = AVCaptureSession()
-        session.sessionPreset = .photo
-        return session
-    }()
-
-    private let photoOutput: AVCapturePhotoOutput = AVCapturePhotoOutput()
-
-    @State private var captureDelegate: PhotoCaptureDelegate? = nil
-
     // MARK: - Body
 
     var body: some View {
         ZStack {
             // Camera preview (only shown when authorized)
-            if cameraPermissionStatus == .authorized {
-                CameraPreviewView(session: captureSession)
+            if shouldShowLiveCameraPreview, let session = cameraController.session {
+                CameraPreviewView(session: session)
                     .ignoresSafeArea()
             } else {
                 // 17.9 — 未授权时展示引导占位视图
@@ -146,7 +268,7 @@ struct CameraView: View {
             }
 
             // Controls overlay (only when authorized)
-            if cameraPermissionStatus == .authorized {
+            if shouldShowLiveCameraPreview {
                 VStack {
                     Spacer()
                     if isLoading {
@@ -195,25 +317,39 @@ struct CameraView: View {
         .sheet(item: $recognitionResult) { result in
             resultSheetView(for: result)
         }
-        // 17.9 — 权限引导弹窗
-        .appDialog(
-            isPresented: $showPermissionAlert,
-            title: "需要相机权限",
-            message: "RaccoonCal 需要访问您的相机来拍摄食物照片，请在设置中允许相机访问。",
-            tone: .warning,
-            primaryAction: AppDialogAction("去设置") {
-                if let url = URL(string: UIApplication.openSettingsURLString) {
-                    UIApplication.shared.open(url)
-                }
-            },
-            secondaryAction: AppDialogAction("取消", role: .cancel)
-        )
         .onAppear {
             startSession()
+        }
+        .onChange(of: scenePhase) { phase in
+            switch phase {
+            case .active:
+                cameraController.refreshPermissionStatus()
+                startSession()
+            case .background, .inactive:
+                stopSession()
+            @unknown default:
+                break
+            }
         }
         .onDisappear {
             stopSession()
         }
+        .appDialog(
+            isPresented: Binding(
+                get: { errorMessage != nil },
+                set: { newValue in
+                    if !newValue {
+                        errorMessage = nil
+                    }
+                }
+            ),
+            title: "操作失败",
+            message: errorMessage ?? "请稍后重试",
+            tone: .error,
+            primaryAction: AppDialogAction("确定") {
+                errorMessage = nil
+            }
+        )
     }
 
     // MARK: - 17.9 Permission Placeholder View
@@ -225,27 +361,32 @@ struct CameraView: View {
                 .scaledToFit()
                 .frame(width: 120, height: 120)
 
-            Text("需要相机权限")
+            Text(simulatorCameraUnavailable ? "模拟器不支持实时相机" : "需要相机权限")
                 .font(.title2)
                 .fontWeight(.semibold)
                 .foregroundColor(.white)
 
-            Text("RaccoonCal 需要访问您的相机\n来拍摄食物照片")
+            Text(permissionDescriptionText)
                 .font(.body)
                 .foregroundColor(.white.opacity(0.8))
                 .multilineTextAlignment(.center)
 
-            Button(action: {
-                if let url = URL(string: UIApplication.openSettingsURLString) {
-                    UIApplication.shared.open(url)
+            VStack(spacing: 12) {
+                Button(action: {
+                    showPhotoPicker = true
+                }) {
+                    Label("从相册选择", systemImage: "photo.on.rectangle")
                 }
-            }) {
-                Text("去设置")
-                    .font(.headline)
-                    .foregroundColor(.black)
-                    .frame(width: 160, height: 44)
-                    .background(Color.white)
-                    .cornerRadius(22)
+                .appButtonStyle(kind: .primary, fullWidth: false)
+
+                if !simulatorCameraUnavailable {
+                    Button(action: {
+                        openAppSettings()
+                    }) {
+                        Text("去设置")
+                    }
+                    .appButtonStyle(kind: .secondary, fullWidth: false)
+                }
             }
         }
         .padding(32)
@@ -254,58 +395,23 @@ struct CameraView: View {
     // MARK: - Session Lifecycle (17.9 — permission-aware)
 
     private func startSession() {
-        let status = AVCaptureDevice.authorizationStatus(for: .video)
-        cameraPermissionStatus = status
-
-        switch status {
-        case .authorized:
-            setupAndStartSession()
-
-        case .notDetermined:
-            Task {
-                let granted = await AVCaptureDevice.requestAccess(for: .video)
-                await MainActor.run {
-                    cameraPermissionStatus = granted ? .authorized : .denied
-                    if granted {
-                        setupAndStartSession()
-                    } else {
-                        showPermissionAlert = true
-                    }
-                }
-            }
-
-        case .denied, .restricted:
-            showPermissionAlert = true
-
-        @unknown default:
-            showPermissionAlert = true
+        guard !simulatorCameraUnavailable else {
+            cameraController.refreshPermissionStatus()
+            return
         }
-    }
-
-    private func setupAndStartSession() {
-        guard !captureSession.isRunning else { return }
-
-        if captureSession.inputs.isEmpty,
-           let device = AVCaptureDevice.default(.builtInWideAngleCamera, for: .video, position: .back),
-           let input = try? AVCaptureDeviceInput(device: device),
-           captureSession.canAddInput(input) {
-            captureSession.addInput(input)
-        }
-
-        if captureSession.canAddOutput(photoOutput) {
-            captureSession.addOutput(photoOutput)
-        }
-
-        DispatchQueue.global(qos: .userInitiated).async {
-            captureSession.startRunning()
-        }
+        cameraController.ensureSessionRunning()
     }
 
     private func stopSession() {
-        guard captureSession.isRunning else { return }
-        DispatchQueue.global(qos: .userInitiated).async {
-            captureSession.stopRunning()
+        cameraController.stopSession()
+    }
+
+    private func openAppSettings() {
+        guard !simulatorCameraUnavailable else { return }
+        guard let url = URL(string: UIApplication.openSettingsURLString) else {
+            return
         }
+        openURL(url)
     }
 
     // MARK: - Capture & Upload
@@ -342,12 +448,7 @@ struct CameraView: View {
     }
 
     private func capturePhoto() async -> Data? {
-        return await withCheckedContinuation { continuation in
-            let delegate = PhotoCaptureDelegate(continuation: continuation)
-            DispatchQueue.main.async { self.captureDelegate = delegate }
-            let settings = AVCapturePhotoSettings()
-            photoOutput.capturePhoto(with: settings, delegate: delegate)
-        }
+        await cameraController.capturePhoto()
     }
 
     private func resizedJpegData(from data: Data, maxWidth: CGFloat, compressionQuality: CGFloat) -> Data? {
@@ -404,11 +505,31 @@ struct CameraView: View {
             sheet
         }
     }
+
+    private var simulatorCameraUnavailable: Bool {
+        #if targetEnvironment(simulator)
+        return true
+        #else
+        return false
+        #endif
+    }
+
+    private var shouldShowLiveCameraPreview: Bool {
+        !simulatorCameraUnavailable
+            && cameraController.session != nil
+            && cameraController.permissionStatus == .authorized
+    }
+
+    private var permissionDescriptionText: String {
+        if simulatorCameraUnavailable {
+            return "当前在 iPhone 模拟器中运行，实时相机能力不可用。\n你可以直接从相册选择图片继续测试。"
+        }
+        return "RaccoonCal 需要访问您的相机\n来拍摄食物照片"
+    }
 }
 
 // MARK: - Preview
 
 #Preview {
     CameraView()
-        .environmentObject(GamificationManager.shared)
 }

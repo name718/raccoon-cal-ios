@@ -43,6 +43,8 @@ struct HomeView: View {
     @State private var isInteracting: Bool = false
     /// 页面级错误提示
     @State private var errorMessage: String? = nil
+    /// 页面整体加载状态（用于慢请求 loading）
+    @State private var isLoadingPage: Bool = false
 
     // MARK: - Computed Properties
 
@@ -176,6 +178,10 @@ struct HomeView: View {
             message: errorMessage ?? "",
             tone: .error,
             primaryAction: AppDialogAction("确定") { errorMessage = nil }
+        )
+        .delayedLoadingOverlay(
+            isLoading: isLoadingPage,
+            message: "正在同步今日数据..."
         )
         .task {
             await loadData()
@@ -524,6 +530,8 @@ struct HomeView: View {
     // MARK: - 16.8 onAppear 数据加载
 
     private func loadData() async {
+        isLoadingPage = true
+        defer { isLoadingPage = false }
         errorMessage = nil
         // 并发拉取游戏化状态、今日饮食记录、个人资料
         async let gamificationTask: Void = gamificationManager.refreshStatus()

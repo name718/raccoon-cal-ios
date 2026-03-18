@@ -20,7 +20,7 @@ struct PetView: View {
 
     // MARK: - Dependencies
 
-    @EnvironmentObject var gamificationManager: GamificationManager
+    @StateObject private var gamificationManager = GamificationManager.shared
 
     // MARK: - State
 
@@ -58,6 +58,8 @@ struct PetView: View {
     @State private var outfitSaveError: String? = nil
     /// 页面级错误提示
     @State private var errorMessage: String? = nil
+    /// 页面整体加载状态（用于慢请求 loading）
+    @State private var isLoadingPage: Bool = false
 
     // MARK: - Computed Properties
 
@@ -153,6 +155,10 @@ struct PetView: View {
             message: errorMessage ?? "",
             tone: .error,
             primaryAction: AppDialogAction("确定") { errorMessage = nil }
+        )
+        .delayedLoadingOverlay(
+            isLoading: isLoadingPage,
+            message: "正在加载浣熊数据..."
         )
         .task {
             await loadPetData()
@@ -659,6 +665,8 @@ struct PetView: View {
     // MARK: - Data Loading
 
     private func loadPetData() async {
+        isLoadingPage = true
+        defer { isLoadingPage = false }
         errorMessage = nil
         await gamificationManager.refreshStatus()
         await gamificationManager.loadPetStatus()
@@ -885,5 +893,4 @@ private struct OutfitOverlayImage: View {
 
 #Preview {
     PetView()
-        .environmentObject(GamificationManager.shared)
 }
