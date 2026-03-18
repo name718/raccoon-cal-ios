@@ -15,6 +15,7 @@ struct GamificationStatus: Codable {
     let streakShields: Int
     let xpToNextLevel: Int
     let levelProgress: Double // 0.0-1.0
+    let lastCheckinAt: String? // ISO 8601，最近一次打卡时间（可为 nil 表示从未打卡）
 }
 
 // MARK: - XP 流水记录

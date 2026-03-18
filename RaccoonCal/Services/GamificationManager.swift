@@ -22,6 +22,7 @@ class GamificationManager: ObservableObject {
 
     @Published var gamificationStatus: GamificationStatus?
     @Published var petStatus: PetStatus?
+    @Published var petLevelHistory: [PetLevelEvent] = []
     @Published var dailyTasks: [DailyTask] = []
     @Published var achievements: [Achievement] = []
     @Published var leagueInfo: LeagueInfo?
@@ -132,9 +133,70 @@ class GamificationManager: ObservableObject {
         }
     }
 
-    // TODO: 13.5 — Add methods:
-    //   func interactWithPet() async
-    //   func updatePetOutfit(_ outfit: PetOutfitRequest) async
+    /// 从服务器拉取宠物升级历史（按 achievedAt 升序），更新 petLevelHistory
+    func loadPetLevelHistory() async {
+        do {
+            let history = try await apiService.getPetLevelHistory()
+            petLevelHistory = history.sorted { $0.achievedAt < $1.achievedAt }
+        } catch {
+            print("[GamificationManager] loadPetLevelHistory error: \(error.localizedDescription)")
+        }
+    }
+
+    // MARK: - Pet Interaction (Task 19.4)
+
+    /// 与浣熊互动（每日一次，+XP）。
+    /// - Returns: 更新后的 GamificationStatus，若今日已互动则返回 nil
+    func interactWithPet() async -> GamificationStatus? {
+        do {
+            let updatedStatus = try await apiService.interactWithPet()
+            gamificationStatus = updatedStatus
+            showXpFloat(amount: 5)
+            return updatedStatus
+        } catch APIServiceError.httpError(409) {
+            // 今日已互动，静默处理
+            return nil
+        } catch {
+            print("[GamificationManager] interactWithPet error: \(error.localizedDescription)")
+            return nil
+        }
+    }
+
+    // MARK: - Pet Outfit (Task 19.6)
+
+    /// 更换装扮：乐观更新本地 petStatus，调用 API 保存，失败时回滚。
+    /// - Parameter outfit: 新装扮槽位请求体
+    /// - Returns: 更新后的 PetStatus，失败时返回 nil
+    func updatePetOutfit(_ outfit: PetOutfitRequest) async -> PetStatus? {
+        // 保存旧状态用于回滚
+        let previousStatus = petStatus
+
+        // 乐观更新本地状态
+        if let current = petStatus {
+            petStatus = PetStatus(
+                id: current.id,
+                name: current.name,
+                satiety: current.satiety,
+                mood: current.mood,
+                hatSlot: outfit.hat ?? current.hatSlot,
+                clothSlot: outfit.clothes ?? current.clothSlot,
+                accessSlot: outfit.accessory ?? current.accessSlot,
+                level: current.level,
+                totalXp: current.totalXp
+            )
+        }
+
+        do {
+            let updated = try await apiService.updatePetOutfit(outfit)
+            petStatus = updated
+            return updated
+        } catch {
+            // 回滚到旧状态
+            petStatus = previousStatus
+            print("[GamificationManager] updatePetOutfit error: \(error.localizedDescription)")
+            return nil
+        }
+    }
 
     // MARK: - Level Calculation (Task 13.6)
 

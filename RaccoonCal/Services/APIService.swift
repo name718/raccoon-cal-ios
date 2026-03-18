@@ -305,6 +305,28 @@ class APIService: ObservableObject {
         return data
     }
 
+    /// GET /api/pet/level-history — 获取宠物升级历史（按 achievedAt 升序）
+    func getPetLevelHistory() async throws -> [PetLevelEvent] {
+        let response: APIResponse<[PetLevelEvent]> = try await request(
+            endpoint: "/pet/level-history",
+            method: .GET,
+            responseType: APIResponse<[PetLevelEvent]>.self
+        )
+        guard let data = response.data else { throw APIServiceError.noData }
+        return data
+    }
+
+    /// GET /api/pet/outfits — 获取已解锁装扮 key 列表
+    func getUnlockedOutfits() async throws -> [String] {
+        let response: APIResponse<[String]> = try await request(
+            endpoint: "/pet/outfits",
+            method: .GET,
+            responseType: APIResponse<[String]>.self
+        )
+        guard let data = response.data else { throw APIServiceError.noData }
+        return data
+    }
+
     /// PUT /api/pet/outfit — 更新浣熊装扮槽位
     func updatePetOutfit(_ outfit: PetOutfitRequest) async throws -> PetStatus {
         let body = try JSONEncoder().encode(outfit)

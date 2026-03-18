@@ -292,16 +292,16 @@
 
 ### 任务 19：PetView
 
-- [ ] 19.1 创建 `Views/Pet/PetView.swift`
-- [ ] 19.2 实现浣熊外观/名称/等级/饱食度进度条展示（使用静态图片）
-- [ ] 19.3 集成 `RaccoonMoodView` 展示当前心情状态
-- [ ] 19.4 实现点击浣熊调用 `interactWithPet`，显示随机文案和简单 scale 动画
+- [x] 19.1 创建 `Views/Pet/PetView.swift`
+- [x] 19.2 实现浣熊外观/名称/等级/饱食度进度条展示（使用静态图片）
+- [x] 19.3 集成 `RaccoonMoodView` 展示当前心情状态
+- [x] 19.4 实现点击浣熊调用 `interactWithPet`，显示随机文案和简单 scale 动画
 - `[DEFERRED]` 浣熊互动 3D 动画（骨骼动画/游戏引擎）
-- [ ] 19.5 实现装扮道具列表（帽子/衣服/配件三槽位）
-- [ ] 19.6 实现更换装扮后调用 `updatePetOutfit` 保存，图片叠加预览
+- [x] 19.5 实现装扮道具列表（帽子/衣服/配件三槽位）
+- [x] 19.6 实现更换装扮后调用 `updatePetOutfit` 保存，图片叠加预览
 - `[DEFERRED]` 装扮实时 3D 预览
-- [ ] 19.7 实现成长历史时间线（按 achievedAt 升序）
-- [ ] 19.8 连续 3 天未打卡时展示"思念"状态（切换至 RaccoonLoading 图片 + 文案提示）
+- [x] 19.7 实现成长历史时间线（按 achievedAt 升序）
+- [x] 19.8 连续 3 天未打卡时展示"思念"状态（切换至 RaccoonLoading 图片 + 文案提示）
 - `[DEFERRED]` 思念状态 3D 等待动画
 
 **属性测试**：Property 14（成长历史时间线有序性）
