@@ -194,13 +194,13 @@
 
 ### 任务 13：GamificationManager
 
-- [ ] 13.1 创建 `Services/GamificationManager.swift`（ObservableObject）
-- [ ] 13.2 实现 `@Published` 属性：gamificationStatus/dailyTasks/achievements/leagueInfo
-- [ ] 13.3 实现 `refreshStatus()` 拉取游戏化状态
-- [ ] 13.4 实现 `showXpFloat(amount: Int)` 触发浮动 XP 动画
-- [ ] 13.5 实现 `calcPetMood(calories:target:mealCount:streakDays:) -> PetMood`（本地计算）
-- [ ] 13.6 实现 `calcLevel(totalXp:) -> Int` 和 `xpToNextLevel(totalXp:) -> Int`（本地计算）
-- [ ] 13.7 实现 `calcSatietyDelta(recordCalories:dailyTarget:) -> Double`（本地计算）
+- [x] 13.1 创建 `Services/GamificationManager.swift`（ObservableObject）
+- [x] 13.2 实现 `@Published` 属性：gamificationStatus/dailyTasks/achievements/leagueInfo
+- [x] 13.3 实现 `refreshStatus()` 拉取游戏化状态
+- [x] 13.4 实现 `showXpFloat(amount: Int)` 触发浮动 XP 动画
+- [x] 13.5 实现 `calcPetMood(calories:target:mealCount:streakDays:) -> PetMood`（本地计算）
+- [x] 13.6 实现 `calcLevel(totalXp:) -> Int` 和 `xpToNextLevel(totalXp:) -> Int`（本地计算）
+- [x] 13.7 实现 `calcSatietyDelta(recordCalories:dailyTarget:) -> Double`（本地计算）
 
 **属性测试（SwiftCheck）**：
 - Property 12（心情确定性）
