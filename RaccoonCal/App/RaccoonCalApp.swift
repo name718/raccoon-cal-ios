@@ -19,5 +19,12 @@ struct RaccoonCalApp: App {
                 LaunchView()
             }
         }
+        .task {
+            let granted = await NotificationManager.shared.requestPermission()
+            if granted {
+                NotificationManager.shared.scheduleDailyCheckin(hour: 20, minute: 0)
+                NotificationManager.shared.scheduleTaskRefresh(hour: 9, minute: 0)
+            }
+        }
     }
 }

@@ -211,14 +211,14 @@
 
 ### 任务 14：NotificationManager
 
-- [ ] 14.1 创建 `Services/NotificationManager.swift`
-- [ ] 14.2 实现 `requestPermission() async -> Bool`
-- [ ] 14.3 实现 `scheduleDailyCheckin(hour:minute:)`（默认 20:00，注册前先取消旧通知）
-- [ ] 14.4 实现 `scheduleTaskRefresh(hour:minute:)`（默认 09:00）
-- [ ] 14.5 实现 `scheduleStreakRisk()`（当日 19:00，非重复）
-- [ ] 14.6 实现 `schedulePetMissing()`（连续 3 天未打卡后触发）
-- [ ] 14.7 实现 `cancelDailyCheckin()`（完成打卡后调用）
-- [ ] 14.8 在 `MainTabView` 或 `RaccoonCalApp` 中初始化时请求通知权限
+- [x] 14.1 创建 `Services/NotificationManager.swift`
+- [x] 14.2 实现 `requestPermission() async -> Bool`
+- [x] 14.3 实现 `scheduleDailyCheckin(hour:minute:)`（默认 20:00，注册前先取消旧通知）
+- [x] 14.4 实现 `scheduleTaskRefresh(hour:minute:)`（默认 09:00）
+- [x] 14.5 实现 `scheduleStreakRisk()`（当日 19:00，非重复）
+- [x] 14.6 实现 `schedulePetMissing()`（连续 3 天未打卡后触发）
+- [x] 14.7 实现 `cancelDailyCheckin()`（完成打卡后调用）
+- [x] 14.8 在 `MainTabView` 或 `RaccoonCalApp` 中初始化时请求通知权限
 
 **属性测试（SwiftCheck）**：
 - Property 28（修改通知后旧通知被取消）
