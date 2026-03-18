@@ -6,7 +6,6 @@
 //
 
 import SwiftUI
-import Charts
 
 /// 过去 7 天卡路里折线图，含每日目标虚线
 struct CalorieLineChartView: View {
@@ -30,54 +29,88 @@ struct CalorieLineChartView: View {
     // MARK: - Chart
 
     private var chartView: some View {
-        Chart {
-            // 目标虚线
-            RuleMark(y: .value("目标", dailyTarget))
-                .lineStyle(StrokeStyle(lineWidth: 1.5, dash: [5, 5]))
-                .foregroundStyle(AppTheme.warning.opacity(0.8))
-                .annotation(position: .top, alignment: .trailing) {
-                    Text("目标 \(Int(dailyTarget))")
-                        .font(.system(size: 10))
-                        .foregroundColor(AppTheme.warning)
-                        .padding(.trailing, 4)
+        VStack(alignment: .leading, spacing: 8) {
+            HStack {
+                Text("目标 \(Int(dailyTarget)) kcal")
+                    .font(.system(size: 10))
+                    .foregroundColor(AppTheme.warning)
+                Spacer()
+            }
+            .padding(.horizontal, 16)
+
+            GeometryReader { geometry in
+                let layout = chartLayout(
+                    size: geometry.size,
+                    values: dataPoints.map(\.calories) + [dailyTarget]
+                )
+
+                ZStack {
+                    // Y 轴辅助线
+                    ForEach(Array(layout.gridValues.enumerated()), id: \.offset) { _, value in
+                        let y = yPosition(for: value, in: layout)
+                        Path { path in
+                            path.move(to: CGPoint(x: layout.leftInset, y: y))
+                            path.addLine(to: CGPoint(x: geometry.size.width - layout.rightInset, y: y))
+                        }
+                        .stroke(Color.gray.opacity(0.15), lineWidth: 1)
+                    }
+
+                    // 目标虚线
+                    Path { path in
+                        let y = yPosition(for: dailyTarget, in: layout)
+                        path.move(to: CGPoint(x: layout.leftInset, y: y))
+                        path.addLine(to: CGPoint(x: geometry.size.width - layout.rightInset, y: y))
+                    }
+                    .stroke(
+                        AppTheme.warning.opacity(0.8),
+                        style: StrokeStyle(lineWidth: 1.5, dash: [5, 5])
+                    )
+
+                    // 折线
+                    Path { path in
+                        for (index, point) in dataPoints.enumerated() {
+                            let x = xPosition(
+                                for: index,
+                                count: dataPoints.count,
+                                in: layout,
+                                width: geometry.size.width
+                            )
+                            let y = yPosition(for: point.calories, in: layout)
+                            if index == 0 {
+                                path.move(to: CGPoint(x: x, y: y))
+                            } else {
+                                path.addLine(to: CGPoint(x: x, y: y))
+                            }
+                        }
+                    }
+                    .stroke(AppTheme.primary, style: StrokeStyle(lineWidth: 2.5, lineJoin: .round))
+
+                    // 数据点
+                    ForEach(Array(dataPoints.enumerated()), id: \.element.date) { index, point in
+                        let x = xPosition(
+                            for: index,
+                            count: dataPoints.count,
+                            in: layout,
+                            width: geometry.size.width
+                        )
+                        let y = yPosition(for: point.calories, in: layout)
+
+                        Circle()
+                            .fill(point.calories > dailyTarget ? AppTheme.warning : AppTheme.primary)
+                            .frame(width: 8, height: 8)
+                            .position(x: x, y: y)
+
+                        Text(shortLabel(point.date))
+                            .font(.system(size: 11))
+                            .foregroundColor(AppTheme.textSecondary)
+                            .position(x: x, y: geometry.size.height - 10)
+                    }
                 }
-
-            // 卡路里折线
-            ForEach(dataPoints, id: \.date) { point in
-                LineMark(
-                    x: .value("日期", shortLabel(point.date)),
-                    y: .value("卡路里", point.calories)
-                )
-                .foregroundStyle(AppTheme.primary)
-                .interpolationMethod(.catmullRom)
-
-                PointMark(
-                    x: .value("日期", shortLabel(point.date)),
-                    y: .value("卡路里", point.calories)
-                )
-                .foregroundStyle(point.calories > dailyTarget ? AppTheme.warning : AppTheme.primary)
-                .symbolSize(30)
             }
+            .frame(height: 160)
+            .padding(.horizontal, 16)
+            .padding(.bottom, 8)
         }
-        .chartXAxis {
-            AxisMarks(values: .automatic) { _ in
-                AxisValueLabel()
-                    .font(.system(size: 11))
-                    .foregroundStyle(AppTheme.textSecondary)
-            }
-        }
-        .chartYAxis {
-            AxisMarks(position: .leading) { _ in
-                AxisValueLabel()
-                    .font(.system(size: 11))
-                    .foregroundStyle(AppTheme.textSecondary)
-                AxisGridLine()
-                    .foregroundStyle(Color.gray.opacity(0.15))
-            }
-        }
-        .frame(height: 160)
-        .padding(.horizontal, 16)
-        .padding(.bottom, 8)
     }
 
     // MARK: - Empty State
@@ -98,6 +131,58 @@ struct CalorieLineChartView: View {
         guard parts.count == 3 else { return dateStr }
         return "\(parts[1])/\(parts[2])"
     }
+
+    private func chartLayout(size: CGSize, values: [Double]) -> LineChartLayout {
+        let leftInset: CGFloat = 4
+        let rightInset: CGFloat = 4
+        let topInset: CGFloat = 12
+        let bottomInset: CGFloat = 24
+
+        let minValue = values.min() ?? 0
+        let maxValue = values.max() ?? 0
+        let padding = max((maxValue - minValue) * 0.15, 100)
+        let lowerBound = max(0, minValue - padding)
+        let upperBound = maxValue + padding
+        let gridValues = stride(from: lowerBound, through: upperBound, by: max((upperBound - lowerBound) / 3, 1)).map { $0 }
+
+        return LineChartLayout(
+            leftInset: leftInset,
+            rightInset: rightInset,
+            topInset: topInset,
+            bottomInset: bottomInset,
+            minValue: lowerBound,
+            maxValue: max(upperBound, lowerBound + 1),
+            gridValues: gridValues
+        )
+    }
+
+    private func xPosition(
+        for index: Int,
+        count: Int,
+        in layout: LineChartLayout,
+        width: CGFloat
+    ) -> CGFloat {
+        guard count > 1 else { return layout.leftInset }
+        let usableWidth = width - layout.leftInset - layout.rightInset
+        let step = usableWidth / CGFloat(count - 1)
+        return layout.leftInset + CGFloat(index) * step
+    }
+
+    private func yPosition(for value: Double, in layout: LineChartLayout) -> CGFloat {
+        let chartHeight = max(1, 160 - layout.topInset - layout.bottomInset)
+        let progress = (value - layout.minValue) / (layout.maxValue - layout.minValue)
+        return layout.topInset + chartHeight * CGFloat(1 - progress)
+    }
+}
+
+private struct LineChartLayout {
+    let leftInset: CGFloat
+    let rightInset: CGFloat
+    let topInset: CGFloat
+    let bottomInset: CGFloat
+    let minValue: Double
+    let maxValue: Double
+    let gridValues: [Double]
 }
 
 // MARK: - Preview

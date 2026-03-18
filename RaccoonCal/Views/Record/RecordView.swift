@@ -51,6 +51,8 @@ struct RecordView: View {
 
     /// 删除失败时的错误信息（非 nil 时弹出错误提示）
     @State private var deleteErrorMessage: String? = nil
+    /// 页面加载失败时的错误信息
+    @State private var loadErrorMessage: String? = nil
 
     /// 个人资料（含每日卡路里目标）
     @State private var userProfile: UserProfile? = nil
@@ -123,6 +125,17 @@ struct RecordView: View {
                         .frame(maxWidth: .infinity, maxHeight: .infinity)
                         .background(Color.black.opacity(0.05))
                 }
+
+                Color.clear
+                    .frame(width: 0, height: 0)
+                    .alert("加载失败", isPresented: Binding(
+                        get: { loadErrorMessage != nil },
+                        set: { if !$0 { loadErrorMessage = nil } }
+                    )) {
+                        Button("确定", role: .cancel) { loadErrorMessage = nil }
+                    } message: {
+                        Text(loadErrorMessage ?? "")
+                    }
             }
             .navigationTitle("饮食记录")
             .navigationBarTitleDisplayMode(.inline)
@@ -440,6 +453,7 @@ struct RecordView: View {
 
     /// 并发加载所有数据
     private func loadAll() async {
+        loadErrorMessage = nil
         async let recordsTask: Void = loadRecords(for: selectedDate)
         async let statsTask: Void = loadStats()
         async let profileTask: Void = loadProfile()
@@ -456,6 +470,7 @@ struct RecordView: View {
         } catch {
             print("[RecordView] loadRecords error: \(error.localizedDescription)")
             dailyCalSummary = nil
+            if loadErrorMessage == nil { loadErrorMessage = error.localizedDescription }
         }
     }
 
@@ -467,6 +482,7 @@ struct RecordView: View {
             nutritionStats = try await APIService.shared.getFoodStats(days: 7)
         } catch {
             print("[RecordView] loadStats error: \(error.localizedDescription)")
+            if loadErrorMessage == nil { loadErrorMessage = error.localizedDescription }
         }
     }
 
@@ -476,6 +492,7 @@ struct RecordView: View {
             userProfile = try await APIService.shared.getProfile()
         } catch {
             print("[RecordView] loadProfile error: \(error.localizedDescription)")
+            if loadErrorMessage == nil { loadErrorMessage = error.localizedDescription }
         }
     }
 
@@ -490,6 +507,7 @@ struct RecordView: View {
             checkedInDates = Set(dates)
         } catch {
             print("[RecordView] loadCheckinDates error: \(error.localizedDescription)")
+            if loadErrorMessage == nil { loadErrorMessage = error.localizedDescription }
         }
     }
 

@@ -27,6 +27,7 @@ struct ProfileView: View {
     @State private var isLoading = false
     @State private var nutritionStats: NutritionStats?
     @State private var isLoadingStats = false
+    @State private var errorMessage: String? = nil
 
     // Sheet / alert flags
     @State private var showEditProfile = false
@@ -74,6 +75,17 @@ struct ProfileView: View {
                     }
                     .refreshable { await loadAllData() }
                 }
+
+                Color.clear
+                    .frame(width: 0, height: 0)
+                    .alert("加载失败", isPresented: Binding(
+                        get: { errorMessage != nil },
+                        set: { if !$0 { errorMessage = nil } }
+                    )) {
+                        Button("确定", role: .cancel) { errorMessage = nil }
+                    } message: {
+                        Text(errorMessage ?? "")
+                    }
             }
             .navigationTitle("我的")
             .navigationBarTitleDisplayMode(.inline)
@@ -709,7 +721,10 @@ struct ProfileView: View {
     /// 加载结算结果，若存在未查看的结算则自动弹出
     private func loadSettlementIfNeeded() async {
         do {
-            let settlement = try await APIService.shared.getLeagueSettlement()
+            guard let settlement = try await APIService.shared.getLeagueSettlement() else {
+                gamificationManager.leagueSettlement = nil
+                return
+            }
             gamificationManager.leagueSettlement = settlement
             // Auto-show if not yet dismissed for this settlement
             let dismissKey = "leagueSettlementDismissed_\(settlement.finalRank)_\(settlement.newTier)"
@@ -718,6 +733,7 @@ struct ProfileView: View {
             }
         } catch {
             print("[ProfileView] loadSettlementIfNeeded error: \(error.localizedDescription)")
+            if errorMessage == nil { errorMessage = error.localizedDescription }
         }
     }
 
@@ -802,11 +818,15 @@ struct ProfileView: View {
 
     private func loadAllData() async {
         isLoading = true
+        errorMessage = nil
         async let profileTask: Void = loadProfile()
         async let gamificationTask: Void = gamificationManager.refreshStatus()
         async let weightTask: Void = loadWeightHistory()
         async let statsTask: Void = loadNutritionStats()
         _ = await (profileTask, gamificationTask, weightTask, statsTask)
+        if errorMessage == nil {
+            errorMessage = gamificationManager.errorMessage
+        }
         isLoading = false
     }
 
@@ -815,6 +835,7 @@ struct ProfileView: View {
             userProfile = try await APIService.shared.getProfile()
         } catch {
             print("[ProfileView] loadProfile error: \(error.localizedDescription)")
+            if errorMessage == nil { errorMessage = error.localizedDescription }
         }
     }
 
@@ -823,6 +844,7 @@ struct ProfileView: View {
             weightHistory = try await APIService.shared.getWeightHistory()
         } catch {
             print("[ProfileView] loadWeightHistory error: \(error.localizedDescription)")
+            if errorMessage == nil { errorMessage = error.localizedDescription }
         }
     }
 
@@ -833,6 +855,7 @@ struct ProfileView: View {
             nutritionStats = try await APIService.shared.getFoodStats(days: 365)
         } catch {
             print("[ProfileView] loadNutritionStats error: \(error.localizedDescription)")
+            if errorMessage == nil { errorMessage = error.localizedDescription }
         }
         isLoadingStats = false
     }

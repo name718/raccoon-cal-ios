@@ -6,7 +6,6 @@
 //
 
 import SwiftUI
-import Charts
 
 /// 三大营养素数据点
 struct MacroDataPoint: Identifiable {
@@ -55,34 +54,32 @@ struct NutrientBarChartView: View {
     // MARK: - Chart
 
     private var chartView: some View {
-        Chart(dataPoints) { point in
-            BarMark(
-                x: .value("营养素", point.name),
-                y: .value("克数", point.value)
-            )
-            .foregroundStyle(point.color.opacity(0.85))
-            .cornerRadius(6)
-            .annotation(position: .top, alignment: .center) {
-                Text(String(format: "%.0fg", point.value))
-                    .font(.system(size: 11, weight: .medium))
-                    .foregroundColor(AppTheme.textSecondary)
+        GeometryReader { geometry in
+            let maxValue = max(dataPoints.map(\.value).max() ?? 1, 1)
+
+            HStack(alignment: .bottom, spacing: 20) {
+                ForEach(dataPoints) { point in
+                    VStack(spacing: 8) {
+                        Text(String(format: "%.0fg", point.value))
+                            .font(.system(size: 11, weight: .medium))
+                            .foregroundColor(AppTheme.textSecondary)
+
+                        RoundedRectangle(cornerRadius: 8)
+                            .fill(point.color.opacity(0.85))
+                            .frame(
+                                width: max(32, (geometry.size.width - 40) / 3 - 20),
+                                height: max(12, (geometry.size.height - 44) * CGFloat(point.value / maxValue))
+                            )
+
+                        Text(point.name)
+                            .font(.system(size: 12))
+                            .foregroundColor(AppTheme.textSecondary)
+                            .multilineTextAlignment(.center)
+                    }
+                    .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .bottom)
+                }
             }
-        }
-        .chartXAxis {
-            AxisMarks(values: .automatic) { _ in
-                AxisValueLabel()
-                    .font(.system(size: 12))
-                    .foregroundStyle(AppTheme.textSecondary)
-            }
-        }
-        .chartYAxis {
-            AxisMarks(position: .leading) { _ in
-                AxisValueLabel()
-                    .font(.system(size: 11))
-                    .foregroundStyle(AppTheme.textSecondary)
-                AxisGridLine()
-                    .foregroundStyle(Color.gray.opacity(0.15))
-            }
+            .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .bottom)
         }
         .frame(height: 160)
         .padding(.horizontal, 16)

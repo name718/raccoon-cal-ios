@@ -102,7 +102,47 @@ struct ProfileEditView: View {
             ZStack {
                 AppTheme.gradientBackground.ignoresSafeArea()
 
-                Form {
+                formContent
+
+                // 成功提示 Toast
+                if showSuccess {
+                    VStack {
+                        Spacer()
+                        successToast
+                            .padding(.bottom, 40)
+                            .transition(.move(edge: .bottom).combined(with: .opacity))
+                    }
+                }
+            }
+            .navigationTitle("编辑资料")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .navigationBarLeading) {
+                    Button("取消") { dismiss() }
+                        .foregroundColor(AppTheme.textSecondary)
+                }
+                ToolbarItem(placement: .navigationBarTrailing) {
+                    if isSaving {
+                        ProgressView().scaleEffect(0.8)
+                    } else {
+                        Button("保存") { Task { await save() } }
+                            .font(.system(size: 15, weight: .semibold))
+                            .foregroundColor(AppTheme.primary)
+                            .disabled(nickname.trimmingCharacters(in: .whitespaces).isEmpty)
+                    }
+                }
+            }
+            .alert("保存失败", isPresented: $showError) {
+                Button("确定", role: .cancel) {}
+            } message: {
+                Text(errorMessage)
+            }
+        }
+    }
+
+    @ViewBuilder
+    private var formContent: some View {
+        let form = Form {
                     // 基本信息
                     Section {
                         HStack {
@@ -196,41 +236,11 @@ struct ProfileEditView: View {
                             .foregroundColor(AppTheme.textDisabled)
                     }
                 }
-                .scrollContentBackground(.hidden)
 
-                // 成功提示 Toast
-                if showSuccess {
-                    VStack {
-                        Spacer()
-                        successToast
-                            .padding(.bottom, 40)
-                            .transition(.move(edge: .bottom).combined(with: .opacity))
-                    }
-                }
-            }
-            .navigationTitle("编辑资料")
-            .navigationBarTitleDisplayMode(.inline)
-            .toolbar {
-                ToolbarItem(placement: .navigationBarLeading) {
-                    Button("取消") { dismiss() }
-                        .foregroundColor(AppTheme.textSecondary)
-                }
-                ToolbarItem(placement: .navigationBarTrailing) {
-                    if isSaving {
-                        ProgressView().scaleEffect(0.8)
-                    } else {
-                        Button("保存") { Task { await save() } }
-                            .font(.system(size: 15, weight: .semibold))
-                            .foregroundColor(AppTheme.primary)
-                            .disabled(nickname.trimmingCharacters(in: .whitespaces).isEmpty)
-                    }
-                }
-            }
-            .alert("保存失败", isPresented: $showError) {
-                Button("确定", role: .cancel) {}
-            } message: {
-                Text(errorMessage)
-            }
+        if #available(iOS 16.0, *) {
+            form.scrollContentBackground(.hidden)
+        } else {
+            form
         }
     }
 

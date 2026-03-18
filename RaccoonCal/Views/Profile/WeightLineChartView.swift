@@ -6,7 +6,6 @@
 //
 
 import SwiftUI
-import Charts
 
 /// 最近 30 天体重折线图
 struct WeightLineChartView: View {
@@ -51,44 +50,50 @@ struct WeightLineChartView: View {
             }
             .padding(.horizontal, 16)
 
-            Chart {
-                // 折线
-                ForEach(last30, id: \.id) { record in
-                    LineMark(
-                        x: .value("日期", shortLabel(record.recordedAt)),
-                        y: .value("体重", record.weight)
-                    )
-                    .foregroundStyle(AppTheme.primary)
-                    .interpolationMethod(.catmullRom)
-                }
+            GeometryReader { geometry in
+                let layout = chartLayout(size: geometry.size)
 
-                // 数据点
-                ForEach(last30, id: \.id) { record in
-                    PointMark(
-                        x: .value("日期", shortLabel(record.recordedAt)),
-                        y: .value("体重", record.weight)
-                    )
-                    .foregroundStyle(record.weight == minWeight ? AppTheme.info : (record.weight == maxWeight ? AppTheme.accent : AppTheme.primary))
-                    .symbolSize(28)
+                ZStack {
+                    ForEach(Array(layout.gridValues.enumerated()), id: \.offset) { _, value in
+                        let y = yPosition(for: value, in: layout)
+                        Path { path in
+                            path.move(to: CGPoint(x: layout.leftInset, y: y))
+                            path.addLine(to: CGPoint(x: geometry.size.width - layout.rightInset, y: y))
+                        }
+                        .stroke(Color.gray.opacity(0.15), lineWidth: 1)
+                    }
+
+                    Path { path in
+                        for (index, record) in last30.enumerated() {
+                            let x = xPosition(for: index, count: last30.count, in: layout, width: geometry.size.width)
+                            let y = yPosition(for: record.weight, in: layout)
+                            if index == 0 {
+                                path.move(to: CGPoint(x: x, y: y))
+                            } else {
+                                path.addLine(to: CGPoint(x: x, y: y))
+                            }
+                        }
+                    }
+                    .stroke(AppTheme.primary, style: StrokeStyle(lineWidth: 2.5, lineJoin: .round))
+
+                    ForEach(Array(last30.enumerated()), id: \.element.id) { index, record in
+                        let x = xPosition(for: index, count: last30.count, in: layout, width: geometry.size.width)
+                        let y = yPosition(for: record.weight, in: layout)
+
+                        Circle()
+                            .fill(pointColor(for: record.weight))
+                            .frame(width: 8, height: 8)
+                            .position(x: x, y: y)
+
+                        if shouldShowLabel(for: index, count: last30.count) {
+                            Text(shortLabel(record.recordedAt))
+                                .font(.system(size: 10))
+                                .foregroundColor(AppTheme.textSecondary)
+                                .position(x: x, y: geometry.size.height - 10)
+                        }
+                    }
                 }
             }
-            .chartXAxis {
-                AxisMarks(values: .stride(by: max(1, last30.count / 5))) { value in
-                    AxisValueLabel()
-                        .font(.system(size: 10))
-                        .foregroundStyle(AppTheme.textSecondary)
-                }
-            }
-            .chartYAxis {
-                AxisMarks(position: .leading) { _ in
-                    AxisValueLabel()
-                        .font(.system(size: 11))
-                        .foregroundStyle(AppTheme.textSecondary)
-                    AxisGridLine()
-                        .foregroundStyle(Color.gray.opacity(0.15))
-                }
-            }
-            .chartYScale(domain: yDomain)
             .frame(height: 160)
             .padding(.horizontal, 16)
             .padding(.bottom, 8)
@@ -123,6 +128,57 @@ struct WeightLineChartView: View {
         let day   = Int(parts[2]) ?? 0
         return "\(month)/\(day)"
     }
+
+    private func chartLayout(size: CGSize) -> WeightChartLayout {
+        let bounds = yDomain
+        let gridStep = max((bounds.upperBound - bounds.lowerBound) / 3, 0.5)
+        let gridValues = stride(from: bounds.lowerBound, through: bounds.upperBound, by: gridStep).map { $0 }
+
+        return WeightChartLayout(
+            leftInset: 4,
+            rightInset: 4,
+            topInset: 12,
+            bottomInset: 24,
+            minValue: bounds.lowerBound,
+            maxValue: bounds.upperBound,
+            gridValues: gridValues
+        )
+    }
+
+    private func xPosition(for index: Int, count: Int, in layout: WeightChartLayout, width: CGFloat) -> CGFloat {
+        guard count > 1 else { return layout.leftInset }
+        let usableWidth = width - layout.leftInset - layout.rightInset
+        let step = usableWidth / CGFloat(count - 1)
+        return layout.leftInset + CGFloat(index) * step
+    }
+
+    private func yPosition(for value: Double, in layout: WeightChartLayout) -> CGFloat {
+        let chartHeight = max(1, 160 - layout.topInset - layout.bottomInset)
+        let progress = (value - layout.minValue) / (layout.maxValue - layout.minValue)
+        return layout.topInset + chartHeight * CGFloat(1 - progress)
+    }
+
+    private func pointColor(for weight: Double) -> Color {
+        if weight == minWeight { return AppTheme.info }
+        if weight == maxWeight { return AppTheme.accent }
+        return AppTheme.primary
+    }
+
+    private func shouldShowLabel(for index: Int, count: Int) -> Bool {
+        guard count > 1 else { return true }
+        let stride = max(1, count / 5)
+        return index == 0 || index == count - 1 || index % stride == 0
+    }
+}
+
+private struct WeightChartLayout {
+    let leftInset: CGFloat
+    let rightInset: CGFloat
+    let topInset: CGFloat
+    let bottomInset: CGFloat
+    let minValue: Double
+    let maxValue: Double
+    let gridValues: [Double]
 }
 
 // MARK: - Preview

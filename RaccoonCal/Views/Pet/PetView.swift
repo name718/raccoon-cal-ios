@@ -56,6 +56,8 @@ struct PetView: View {
     @State private var isSavingOutfit: Bool = false
     /// 保存失败时显示的错误提示
     @State private var outfitSaveError: String? = nil
+    /// 页面级错误提示
+    @State private var errorMessage: String? = nil
 
     // MARK: - Computed Properties
 
@@ -141,6 +143,14 @@ struct PetView: View {
             }
             .navigationTitle("浣熊")
             .navigationBarTitleDisplayMode(.inline)
+        }
+        .alert("请求失败", isPresented: Binding(
+            get: { errorMessage != nil },
+            set: { if !$0 { errorMessage = nil } }
+        )) {
+            Button("确定", role: .cancel) { errorMessage = nil }
+        } message: {
+            Text(errorMessage ?? "")
         }
         .task {
             await loadPetData()
@@ -647,10 +657,14 @@ struct PetView: View {
     // MARK: - Data Loading
 
     private func loadPetData() async {
+        errorMessage = nil
         await gamificationManager.refreshStatus()
         await gamificationManager.loadPetStatus()
         await gamificationManager.loadPetLevelHistory()
         petStatus = gamificationManager.petStatus
+        if errorMessage == nil {
+            errorMessage = gamificationManager.errorMessage
+        }
 
         // 19.5 — 同步已保存的装扮槽位到预览状态
         if let status = petStatus {
@@ -670,6 +684,7 @@ struct PetView: View {
             unlockedOutfitKeys = Set(keys)
         } catch {
             print("[PetView] loadUnlockedOutfits error: \(error.localizedDescription)")
+            if errorMessage == nil { errorMessage = error.localizedDescription }
             // 加载失败时 fallback：将等级 1 的道具视为已解锁
             let level = petLevel
             let fallbackKeys = OutfitCatalog.all
@@ -699,6 +714,9 @@ struct PetView: View {
         Task {
             // 调用 interactWithPet API
             let result = await gamificationManager.interactWithPet()
+            if result == nil, let managerError = gamificationManager.errorMessage {
+                errorMessage = managerError
+            }
 
             // 根据 API 结果决定显示文案
             let phrase: String

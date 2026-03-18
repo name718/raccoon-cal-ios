@@ -130,6 +130,7 @@ class GamificationManager: ObservableObject {
             petStatus = try await apiService.getPetStatus()
         } catch {
             print("[GamificationManager] loadPetStatus error: \(error.localizedDescription)")
+            if errorMessage == nil { errorMessage = error.localizedDescription }
         }
     }
 
@@ -140,24 +141,31 @@ class GamificationManager: ObservableObject {
             petLevelHistory = history.sorted { $0.achievedAt < $1.achievedAt }
         } catch {
             print("[GamificationManager] loadPetLevelHistory error: \(error.localizedDescription)")
+            if errorMessage == nil { errorMessage = error.localizedDescription }
         }
     }
 
     // MARK: - Pet Interaction (Task 19.4)
 
-    /// 与浣熊互动（每日一次，+XP）。
-    /// - Returns: 更新后的 GamificationStatus，若今日已互动则返回 nil
-    func interactWithPet() async -> GamificationStatus? {
+    /// 与浣熊互动（每日一次）。
+    /// - Returns: 若本次成功互动则返回响应数据；若今日已互动则返回 nil
+    func interactWithPet() async -> PetInteractResponse? {
         do {
-            let updatedStatus = try await apiService.interactWithPet()
-            gamificationStatus = updatedStatus
-            showXpFloat(amount: 5)
-            return updatedStatus
-        } catch APIServiceError.httpError(409) {
-            // 今日已互动，静默处理
-            return nil
+            let result = try await apiService.interactWithPet()
+            if result.alreadyInteracted {
+                return nil
+            }
+
+            async let statusResult = apiService.getGamificationStatus()
+            async let petResult = apiService.getPetStatus()
+
+            gamificationStatus = try await statusResult
+            petStatus = try await petResult
+            showXpFloat(amount: result.xpAwarded)
+            return result
         } catch {
             print("[GamificationManager] interactWithPet error: \(error.localizedDescription)")
+            errorMessage = error.localizedDescription
             return nil
         }
     }

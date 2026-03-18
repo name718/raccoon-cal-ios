@@ -188,7 +188,7 @@ struct FoodResultSheet: View {
                                 return "确认保存"
                             }()
                             Text(label)
-                                .fontWeight(.semibold)
+                                .font(.system(size: 17, weight: .semibold))
                         }
                         .frame(maxWidth: .infinity)
                         .padding(.vertical, 14)
@@ -396,7 +396,7 @@ struct FoodEditFormView: View {
                 }
                 ToolbarItem(placement: .confirmationAction) {
                     Button("完成") { confirmEdit() }
-                        .fontWeight(.semibold)
+                        .font(.system(size: 17, weight: .semibold))
                         .foregroundColor(foodName.trimmingCharacters(in: .whitespaces).isEmpty
                                          ? AppTheme.textDisabled
                                          : AppTheme.primary)
@@ -438,7 +438,7 @@ private struct NutritionRow: View {
                 .foregroundColor(AppTheme.textPrimary)
             Spacer()
             Text(String(format: "%.1f %@", value, unit))
-                .fontWeight(.semibold)
+                .font(.system(size: 16, weight: .semibold))
                 .foregroundColor(color)
         }
     }
@@ -516,8 +516,7 @@ struct RecognitionFailedView: View {
 
                     Button(action: confirmManualEntry) {
                         Text("确认")
-                            .font(.subheadline)
-                            .fontWeight(.semibold)
+                            .font(.system(size: 15, weight: .semibold))
                             .foregroundColor(.white)
                             .padding(.horizontal, 18)
                             .padding(.vertical, 12)
@@ -595,8 +594,7 @@ private struct FoodItemCard: View {
                 // Food name + serving size + edit button
                 HStack {
                     Text(food.name)
-                        .font(.subheadline)
-                        .fontWeight(.semibold)
+                        .font(.system(size: 15, weight: .semibold))
                         .foregroundColor(isSelected ? AppTheme.textPrimary : AppTheme.textSecondary)
                     Spacer()
                     Text("\(Int(food.servingSize))g")
@@ -606,8 +604,7 @@ private struct FoodItemCard: View {
                     // Task 17.6 — edit button
                     Button(action: { onEdit?() }) {
                         Text("编辑")
-                            .font(.caption)
-                            .fontWeight(.medium)
+                            .font(.system(size: 12, weight: .medium))
                             .foregroundColor(AppTheme.primary)
                             .padding(.horizontal, 10)
                             .padding(.vertical, 4)
@@ -623,8 +620,7 @@ private struct FoodItemCard: View {
                         .font(.caption)
                         .foregroundColor(isSelected ? AppTheme.primary : AppTheme.textSecondary)
                     Text("\(Int(food.calories)) kcal")
-                        .font(.subheadline)
-                        .fontWeight(.bold)
+                        .font(.system(size: 15, weight: .bold))
                         .foregroundColor(isSelected ? AppTheme.primary : AppTheme.textSecondary)
                 }
 
@@ -661,8 +657,7 @@ private struct MacroLabel: View {
                 .font(.caption2)
                 .foregroundColor(AppTheme.textSecondary)
             Text(String(format: "%.1f%@", value, unit))
-                .font(.caption)
-                .fontWeight(.semibold)
+                .font(.system(size: 12, weight: .semibold))
                 .foregroundColor(color)
         }
     }

@@ -49,6 +49,56 @@ final class PhotoCaptureDelegate: NSObject, AVCapturePhotoCaptureDelegate {
     }
 }
 
+// MARK: - PhotoLibraryPicker (iOS 15 compatible)
+
+struct PhotoLibraryPicker: UIViewControllerRepresentable {
+    let onPick: (Data) -> Void
+
+    func makeCoordinator() -> Coordinator {
+        Coordinator(onPick: onPick)
+    }
+
+    func makeUIViewController(context: Context) -> PHPickerViewController {
+        var configuration = PHPickerConfiguration(photoLibrary: .shared())
+        configuration.filter = .images
+        configuration.selectionLimit = 1
+
+        let controller = PHPickerViewController(configuration: configuration)
+        controller.delegate = context.coordinator
+        return controller
+    }
+
+    func updateUIViewController(_ uiViewController: PHPickerViewController, context: Context) {}
+
+    final class Coordinator: NSObject, PHPickerViewControllerDelegate {
+        private let onPick: (Data) -> Void
+
+        init(onPick: @escaping (Data) -> Void) {
+            self.onPick = onPick
+        }
+
+        func picker(_ picker: PHPickerViewController, didFinishPicking results: [PHPickerResult]) {
+            picker.dismiss(animated: true)
+
+            guard let itemProvider = results.first?.itemProvider,
+                  itemProvider.canLoadObject(ofClass: UIImage.self) else {
+                return
+            }
+
+            itemProvider.loadObject(ofClass: UIImage.self) { object, _ in
+                guard let image = object as? UIImage,
+                      let data = image.jpegData(compressionQuality: 0.95) else {
+                    return
+                }
+
+                DispatchQueue.main.async {
+                    self.onPick(data)
+                }
+            }
+        }
+    }
+}
+
 // MARK: - CameraView
 
 struct CameraView: View {
@@ -63,7 +113,6 @@ struct CameraView: View {
     @State private var errorMessage: String? = nil
     @State private var selectedMealType: String = MealType.lunch.rawValue
     @State private var showPhotoPicker: Bool = false
-    @State private var selectedPhotoItem: PhotosPickerItem? = nil
 
     // 17.9 — 相机权限状态
     @State private var cameraPermissionStatus: AVAuthorizationStatus =
@@ -107,11 +156,7 @@ struct CameraView: View {
                             .padding(.bottom, 48)
                     } else {
                         HStack(spacing: 40) {
-                            PhotosPicker(
-                                selection: $selectedPhotoItem,
-                                matching: .images,
-                                photoLibrary: .shared()
-                            ) {
+                            Button(action: { showPhotoPicker = true }) {
                                 Image(systemName: "photo.on.rectangle")
                                     .font(.system(size: 28))
                                     .foregroundColor(.white)
@@ -140,16 +185,15 @@ struct CameraView: View {
                 }
             }
         }
-        .sheet(item: $recognitionResult) { result in
-            FoodResultSheet(
-                result: result,
-                onDismiss: { recognitionResult = nil },
-                onManualEntry: { syntheticResult in
-                    recognitionResult = syntheticResult
+        .sheet(isPresented: $showPhotoPicker) {
+            PhotoLibraryPicker { rawData in
+                Task {
+                    await loadAndUploadPickedPhoto(rawData)
                 }
-            )
-            .presentationDetents([.medium, .large])
-            .presentationDragIndicator(.hidden)
+            }
+        }
+        .sheet(item: $recognitionResult) { result in
+            resultSheetView(for: result)
         }
         // 17.9 — 权限引导弹窗
         .alert("需要相机权限", isPresented: $showPermissionAlert) {
@@ -167,10 +211,6 @@ struct CameraView: View {
         }
         .onDisappear {
             stopSession()
-        }
-        .onChange(of: selectedPhotoItem) { _, newItem in
-            guard let newItem else { return }
-            Task { await loadAndUploadPickedPhoto(newItem) }
         }
     }
 
@@ -324,16 +364,9 @@ struct CameraView: View {
     // MARK: - Photo Library
 
     @MainActor
-    private func loadAndUploadPickedPhoto(_ item: PhotosPickerItem) async {
+    private func loadAndUploadPickedPhoto(_ rawData: Data) async {
         isLoading = true
         errorMessage = nil
-        defer { selectedPhotoItem = nil }
-
-        guard let rawData = try? await item.loadTransferable(type: Data.self) else {
-            errorMessage = "无法读取所选图片，请重试"
-            isLoading = false
-            return
-        }
 
         guard let imageData = resizedJpegData(from: rawData, maxWidth: 800, compressionQuality: 0.8) else {
             errorMessage = "图片处理失败，请重试"
@@ -349,6 +382,25 @@ struct CameraView: View {
         }
 
         isLoading = false
+    }
+
+    @ViewBuilder
+    private func resultSheetView(for result: FoodRecognitionResult) -> some View {
+        let sheet = FoodResultSheet(
+            result: result,
+            onDismiss: { recognitionResult = nil },
+            onManualEntry: { syntheticResult in
+                recognitionResult = syntheticResult
+            }
+        )
+
+        if #available(iOS 16.0, *) {
+            sheet
+                .presentationDetents([.medium, .large])
+                .presentationDragIndicator(.hidden)
+        } else {
+            sheet
+        }
     }
 }
 

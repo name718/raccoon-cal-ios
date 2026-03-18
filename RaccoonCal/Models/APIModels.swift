@@ -20,6 +20,47 @@ struct APIError: Codable {
     let code: String
     let message: String
     let details: String?
+
+    private enum CodingKeys: String, CodingKey {
+        case code
+        case message
+        case details
+    }
+
+    init(code: String, message: String, details: String?) {
+        self.code = code
+        self.message = message
+        self.details = details
+    }
+
+    init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        code = try container.decode(String.self, forKey: .code)
+        message = try container.decode(String.self, forKey: .message)
+
+        if let detailString = try? container.decode(String.self, forKey: .details) {
+            details = detailString
+        } else if let detailPayload = try? container.decode(APIErrorDetails.self, forKey: .details) {
+            let messages = detailPayload.errors.map(\.message)
+            let uniqueMessages = messages.reduce(into: [String]()) { result, message in
+                if !result.contains(message) {
+                    result.append(message)
+                }
+            }
+            details = uniqueMessages.isEmpty ? nil : uniqueMessages.joined(separator: "\n")
+        } else {
+            details = nil
+        }
+    }
+}
+
+struct APIErrorDetails: Codable {
+    let errors: [APIFieldError]
+}
+
+struct APIFieldError: Codable {
+    let field: String
+    let message: String
 }
 
 // MARK: - 用户相关模型
@@ -36,6 +77,10 @@ struct User: Codable {
 struct AuthResponse: Codable {
     let user: User
     let token: String
+}
+
+struct CurrentUserPayload: Codable {
+    let user: User
 }
 
 // MARK: - 注册请求
@@ -65,6 +110,15 @@ struct CaptchaVerifyRequest: Codable {
 
 struct CaptchaVerifyResponse: Codable {
     let valid: Bool
+}
+
+struct PetInteractResponse: Codable {
+    let xpAwarded: Int
+    let alreadyInteracted: Bool
+}
+
+struct UnlockedOutfitsResponse: Codable {
+    let outfits: [String]
 }
 
 // MARK: - 个人资料相关模型

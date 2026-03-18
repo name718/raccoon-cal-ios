@@ -21,6 +21,7 @@ class APIService: ObservableObject {
     }()
     
     private let session: URLSession
+    private let decoder = JSONDecoder()
     
     private init() {
         // 配置URLSession以支持HTTP连接
@@ -63,15 +64,9 @@ class APIService: ObservableObject {
             
             // 处理HTTP状态码
             if httpResponse.statusCode >= 400 {
-                // 尝试解析错误响应
-                if let errorResponse = try? JSONDecoder().decode(APIResponse<String>.self, from: data) {
-                    throw APIServiceError.serverError(errorResponse.error?.message ?? "未知错误")
-                } else {
-                    throw APIServiceError.httpError(httpResponse.statusCode)
-                }
+                throw decodeAPIError(from: data, statusCode: httpResponse.statusCode)
             }
             
-            let decoder = JSONDecoder()
             return try decoder.decode(T.self, from: data)
             
         } catch let error as APIServiceError {
@@ -79,6 +74,16 @@ class APIService: ObservableObject {
         } catch {
             throw APIServiceError.networkError(error.localizedDescription)
         }
+    }
+
+    private func decodeAPIError(from data: Data, statusCode: Int) -> APIServiceError {
+        if let errorResponse = try? decoder.decode(APIResponse<String>.self, from: data) {
+            let message = errorResponse.error?.details ?? errorResponse.error?.message
+            if let message, !message.isEmpty {
+                return .serverError(message)
+            }
+        }
+        return .httpError(statusCode)
     }
     
     // MARK: - 认证接口
@@ -130,17 +135,17 @@ class APIService: ObservableObject {
     }
     
     func getCurrentUser() async throws -> User {
-        let response: APIResponse<User> = try await request(
+        let response: APIResponse<CurrentUserPayload> = try await request(
             endpoint: "/auth/me",
             method: .GET,
-            responseType: APIResponse<User>.self
+            responseType: APIResponse<CurrentUserPayload>.self
         )
         
         guard let data = response.data else {
             throw APIServiceError.noData
         }
         
-        return data
+        return data.user
     }
     
     // MARK: - 验证码接口
@@ -209,10 +214,7 @@ class APIService: ObservableObject {
             throw APIServiceError.invalidResponse
         }
         if httpResponse.statusCode >= 400 {
-            if let errResp = try? JSONDecoder().decode(APIResponse<String>.self, from: data) {
-                throw APIServiceError.serverError(errResp.error?.message ?? "未知错误")
-            }
-            throw APIServiceError.httpError(httpResponse.statusCode)
+            throw decodeAPIError(from: data, statusCode: httpResponse.statusCode)
         }
         let decoded = try JSONDecoder().decode(APIResponse<FoodRecognitionResult>.self, from: data)
         guard let result = decoded.data else { throw APIServiceError.noData }
@@ -295,11 +297,11 @@ class APIService: ObservableObject {
     }
 
     /// POST /api/pet/interact — 与浣熊互动（每日一次，+XP）
-    func interactWithPet() async throws -> GamificationStatus {
-        let response: APIResponse<GamificationStatus> = try await request(
+    func interactWithPet() async throws -> PetInteractResponse {
+        let response: APIResponse<PetInteractResponse> = try await request(
             endpoint: "/pet/interact",
             method: .POST,
-            responseType: APIResponse<GamificationStatus>.self
+            responseType: APIResponse<PetInteractResponse>.self
         )
         guard let data = response.data else { throw APIServiceError.noData }
         return data
@@ -318,13 +320,13 @@ class APIService: ObservableObject {
 
     /// GET /api/pet/outfits — 获取已解锁装扮 key 列表
     func getUnlockedOutfits() async throws -> [String] {
-        let response: APIResponse<[String]> = try await request(
+        let response: APIResponse<UnlockedOutfitsResponse> = try await request(
             endpoint: "/pet/outfits",
             method: .GET,
-            responseType: APIResponse<[String]>.self
+            responseType: APIResponse<UnlockedOutfitsResponse>.self
         )
         guard let data = response.data else { throw APIServiceError.noData }
-        return data
+        return data.outfits
     }
 
     /// PUT /api/pet/outfit — 更新浣熊装扮槽位
@@ -382,14 +384,13 @@ class APIService: ObservableObject {
     }
 
     /// GET /api/league/settlement — 获取上次联盟结算结果
-    func getLeagueSettlement() async throws -> LeagueSettlement {
+    func getLeagueSettlement() async throws -> LeagueSettlement? {
         let response: APIResponse<LeagueSettlement> = try await request(
             endpoint: "/league/settlement",
             method: .GET,
             responseType: APIResponse<LeagueSettlement>.self
         )
-        guard let data = response.data else { throw APIServiceError.noData }
-        return data
+        return response.data
     }
 
     // MARK: - 个人资料接口
@@ -483,7 +484,22 @@ enum APIServiceError: LocalizedError {
         case .serverError(let message):
             return "服务器错误: \(message)"
         case .httpError(let code):
-            return "HTTP错误: \(code)"
+            switch code {
+            case 400:
+                return "请求参数有误"
+            case 401:
+                return "登录已失效，请重新登录"
+            case 403:
+                return "没有权限执行此操作"
+            case 404:
+                return "请求的内容不存在"
+            case 409:
+                return "当前操作发生冲突，请稍后再试"
+            case 503:
+                return "服务暂时不可用，请稍后重试"
+            default:
+                return "HTTP错误: \(code)"
+            }
         }
     }
 }

@@ -160,8 +160,8 @@ struct LoginView: View {
     }
     
     private var isFormValid: Bool {
-        let basicValid = !identifier.isEmpty && 
-                        !password.isEmpty && 
+        let basicValid = !identifier.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty &&
+                        password.count >= 6 &&
                         agreedToTerms
         
         // 如果需要验证码，必须验证通过
@@ -188,7 +188,10 @@ struct LoginView: View {
         isLoggingIn = true
         
         do {
-            try await userManager.login(identifier: identifier, password: password)
+            try await userManager.login(
+                identifier: identifier.trimmingCharacters(in: .whitespacesAndNewlines),
+                password: password
+            )
             
             // 记录请求时间
             captchaManager.recordRequest()

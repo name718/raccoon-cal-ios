@@ -41,6 +41,8 @@ struct HomeView: View {
     @State private var showEncouragement: Bool = false
     /// 是否正在执行互动请求
     @State private var isInteracting: Bool = false
+    /// 页面级错误提示
+    @State private var errorMessage: String? = nil
 
     // MARK: - Computed Properties
 
@@ -164,6 +166,14 @@ struct HomeView: View {
             }
             .navigationTitle("今日概览")
             .navigationBarTitleDisplayMode(.inline)
+        }
+        .alert("请求失败", isPresented: Binding(
+            get: { errorMessage != nil },
+            set: { if !$0 { errorMessage = nil } }
+        )) {
+            Button("确定", role: .cancel) { errorMessage = nil }
+        } message: {
+            Text(errorMessage ?? "")
         }
         .task {
             await loadData()
@@ -512,12 +522,16 @@ struct HomeView: View {
     // MARK: - 16.8 onAppear 数据加载
 
     private func loadData() async {
+        errorMessage = nil
         // 并发拉取游戏化状态、今日饮食记录、个人资料
         async let gamificationTask: Void = gamificationManager.refreshStatus()
         async let foodTask: Void = loadFoodRecords()
         async let profileTask: Void = loadProfile()
 
         _ = await (gamificationTask, foodTask, profileTask)
+        if errorMessage == nil {
+            errorMessage = gamificationManager.errorMessage
+        }
     }
 
     private func loadFoodRecords() async {
@@ -528,6 +542,7 @@ struct HomeView: View {
             dailyCalSummary = try await APIService.shared.getFoodRecords(date: today)
         } catch {
             print("[HomeView] loadFoodRecords error: \(error.localizedDescription)")
+            errorMessage = error.localizedDescription
         }
     }
 
@@ -536,6 +551,7 @@ struct HomeView: View {
             userProfile = try await APIService.shared.getProfile()
         } catch {
             print("[HomeView] loadProfile error: \(error.localizedDescription)")
+            errorMessage = error.localizedDescription
         }
     }
 
@@ -553,16 +569,10 @@ struct HomeView: View {
 
         // 调用互动 API
         Task {
-            do {
-                let newStatus = try await APIService.shared.interactWithPet()
-                // 更新游戏化状态并触发 XP 浮动动画
-                let xpDiff = newStatus.totalXp - (gamificationManager.gamificationStatus?.totalXp ?? newStatus.totalXp)
-                gamificationManager.gamificationStatus = newStatus
-                if xpDiff > 0 {
-                    gamificationManager.showXpFloat(amount: xpDiff)
-                }
-            } catch {
-                print("[HomeView] interactWithPet error: \(error.localizedDescription)")
+            let result = await gamificationManager.interactWithPet()
+            if result == nil, let managerError = gamificationManager.errorMessage {
+                print("[HomeView] interactWithPet error: \(managerError)")
+                errorMessage = managerError
             }
 
             // 1.5 秒后隐藏文案，重置互动状态
