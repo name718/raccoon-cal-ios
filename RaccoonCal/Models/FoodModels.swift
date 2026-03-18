@@ -72,6 +72,32 @@ struct DailyCalSummary: Codable {
     let date: String
     let totalCalories: Double
     let mealGroups: [MealGroup]
+
+    static func from(records: [FoodRecord], date: String? = nil) -> DailyCalSummary {
+        let targetDate = date ?? records.first?.recordedAt.prefix(10).description ?? currentUTCDateString()
+        let mealOrder = ["breakfast", "lunch", "dinner", "snack"]
+
+        let groupedRecords = Dictionary(grouping: records) { $0.mealType }
+
+        let orderedGroups = mealOrder.compactMap { mealType -> MealGroup? in
+            guard let items = groupedRecords[mealType] else { return nil }
+            return MealGroup.from(mealType: mealType, records: items)
+        }
+
+        let extraGroups = groupedRecords
+            .filter { !mealOrder.contains($0.key) }
+            .sorted { $0.key < $1.key }
+            .map { MealGroup.from(mealType: $0.key, records: $0.value) }
+
+        let mealGroups = orderedGroups + extraGroups
+        let totalCalories = mealGroups.reduce(0) { $0 + $1.totalCalories }
+
+        return DailyCalSummary(
+            date: targetDate,
+            totalCalories: totalCalories,
+            mealGroups: mealGroups
+        )
+    }
 }
 
 // MARK: - 保存饮食记录请求
@@ -109,4 +135,23 @@ struct NutritionStats: Codable {
     let totalRecords: Int
     /// 有记录天数的平均卡路里
     let avgCalories: Double
+}
+
+private extension MealGroup {
+    static func from(mealType: String, records: [FoodRecord]) -> MealGroup {
+        let sortedRecords = records.sorted { $0.recordedAt < $1.recordedAt }
+
+        return MealGroup(
+            mealType: mealType,
+            totalCalories: sortedRecords.reduce(0) { $0 + $1.calories },
+            totalProtein: sortedRecords.reduce(0) { $0 + $1.protein },
+            totalFat: sortedRecords.reduce(0) { $0 + $1.fat },
+            totalCarbs: sortedRecords.reduce(0) { $0 + $1.carbs },
+            records: sortedRecords
+        )
+    }
+}
+
+private func currentUTCDateString() -> String {
+    ISO8601DateFormatter().string(from: Date()).prefix(10).description
 }

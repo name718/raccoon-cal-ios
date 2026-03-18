@@ -15,7 +15,9 @@ struct RaccoonCalApp: App {
     var body: some Scene {
         WindowGroup {
             Group {
-                if userManager.isLoggedIn {
+                if userManager.isRestoringSession {
+                    LaunchView()
+                } else if userManager.isLoggedIn {
                     MainTabView()
                 } else {
                     LaunchView()

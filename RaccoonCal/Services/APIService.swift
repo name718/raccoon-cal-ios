@@ -10,6 +10,7 @@ import UIKit
 
 class APIService: ObservableObject {
     static let shared = APIService()
+    static let authenticationExpiredNotification = Notification.Name("APIServiceAuthenticationExpired")
     
     // 可配置的baseURL，支持本地开发和生产环境
     private let baseURL: String = {
@@ -64,6 +65,7 @@ class APIService: ObservableObject {
             
             // 处理HTTP状态码
             if httpResponse.statusCode >= 400 {
+                handleAuthenticationFailureIfNeeded(statusCode: httpResponse.statusCode)
                 throw decodeAPIError(from: data, statusCode: httpResponse.statusCode)
             }
             
@@ -74,6 +76,13 @@ class APIService: ObservableObject {
         } catch {
             throw APIServiceError.networkError(error.localizedDescription)
         }
+    }
+
+    private func handleAuthenticationFailureIfNeeded(statusCode: Int) {
+        guard statusCode == 401 else { return }
+
+        UserDefaults.standard.removeObject(forKey: "auth_token")
+        NotificationCenter.default.post(name: Self.authenticationExpiredNotification, object: nil)
     }
 
     private func decodeAPIError(from data: Data, statusCode: Int) -> APIServiceError {
@@ -240,13 +249,47 @@ class APIService: ObservableObject {
         if let date = date {
             endpoint += "?date=\(date)"
         }
-        let response: APIResponse<DailyCalSummary> = try await request(
-            endpoint: endpoint,
-            method: .GET,
-            responseType: APIResponse<DailyCalSummary>.self
-        )
-        guard let data = response.data else { throw APIServiceError.noData }
-        return data
+
+        guard let url = URL(string: baseURL + endpoint) else {
+            throw APIServiceError.invalidURL
+        }
+
+        var request = URLRequest(url: url)
+        request.httpMethod = HTTPMethod.GET.rawValue
+        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+
+        if let token = UserDefaults.standard.string(forKey: "auth_token") {
+            request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
+        }
+
+        do {
+            let (data, response) = try await session.data(for: request)
+
+            guard let httpResponse = response as? HTTPURLResponse else {
+                throw APIServiceError.invalidResponse
+            }
+
+            if httpResponse.statusCode >= 400 {
+                handleAuthenticationFailureIfNeeded(statusCode: httpResponse.statusCode)
+                throw decodeAPIError(from: data, statusCode: httpResponse.statusCode)
+            }
+
+            if let summaryResponse = try? decoder.decode(APIResponse<DailyCalSummary>.self, from: data),
+               let summary = summaryResponse.data {
+                return summary
+            }
+
+            if let recordsResponse = try? decoder.decode(APIResponse<[FoodRecord]>.self, from: data),
+               let records = recordsResponse.data {
+                return DailyCalSummary.from(records: records, date: date)
+            }
+
+            throw APIServiceError.invalidResponse
+        } catch let error as APIServiceError {
+            throw error
+        } catch {
+            throw APIServiceError.networkError(error.localizedDescription)
+        }
     }
 
     /// DELETE /api/food/records/:id — 删除一条饮食记录

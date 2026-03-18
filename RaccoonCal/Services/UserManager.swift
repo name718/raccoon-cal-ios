@@ -13,20 +13,35 @@ class UserManager: ObservableObject {
     
     @Published var currentUser: User?
     @Published var isLoggedIn: Bool = false
+    @Published var isRestoringSession: Bool = true
     
     private let apiService = APIService.shared
     
     private init() {
+        NotificationCenter.default.addObserver(
+            forName: APIService.authenticationExpiredNotification,
+            object: nil,
+            queue: .main
+        ) { [weak self] _ in
+            Task { @MainActor in
+                self?.handleAuthenticationExpired()
+            }
+        }
+
         checkLoginStatus()
     }
     
     func checkLoginStatus() {
-        isLoggedIn = apiService.isLoggedIn
-        
-        if isLoggedIn {
+        isRestoringSession = true
+        currentUser = nil
+        isLoggedIn = false
+
+        if apiService.isLoggedIn {
             Task {
                 await loadCurrentUser()
             }
+        } else {
+            isRestoringSession = false
         }
     }
     
@@ -34,18 +49,30 @@ class UserManager: ObservableObject {
     func loadCurrentUser() async {
         do {
             currentUser = try await apiService.getCurrentUser()
+            isLoggedIn = true
         } catch {
             print("加载用户信息失败: \(error)")
-            // 如果获取用户信息失败，可能token已过期，清除登录状态
             logout()
         }
+
+        isRestoringSession = false
     }
     
     @MainActor
     func register(username: String, password: String, email: String?) async throws {
         let authResponse = try await apiService.register(username: username, password: password, email: email)
-        currentUser = authResponse.user
-        isLoggedIn = true
+
+        do {
+            let profileRequest = buildInitialProfileRequest(for: authResponse.user)
+            _ = try await apiService.updateProfile(profileRequest)
+
+            currentUser = authResponse.user
+            isLoggedIn = true
+            OnboardingData.clear()
+        } catch {
+            logout()
+            throw error
+        }
     }
     
     @MainActor
@@ -59,5 +86,31 @@ class UserManager: ObservableObject {
         apiService.logout()
         currentUser = nil
         isLoggedIn = false
+        isRestoringSession = false
+    }
+
+    private func buildInitialProfileRequest(for user: User) -> ProfileUpdateRequest {
+        if let onboardingData = OnboardingData.load() {
+            return onboardingData.toProfileUpdateRequest(
+                fallbackNickname: user.username
+            )
+        }
+
+        return ProfileUpdateRequest(
+            nickname: user.username,
+            gender: "other",
+            height: 170,
+            weight: 60,
+            age: 25,
+            goal: "maintain",
+            activityLevel: "sedentary"
+        )
+    }
+
+    @MainActor
+    private func handleAuthenticationExpired() {
+        currentUser = nil
+        isLoggedIn = false
+        isRestoringSession = false
     }
 }

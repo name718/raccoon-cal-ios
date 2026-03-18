@@ -45,4 +45,55 @@ struct OnboardingData: Codable {
     static func clear() {
         UserDefaults.standard.removeObject(forKey: "OnboardingData")
     }
+
+    func toProfileUpdateRequest(fallbackNickname: String) -> ProfileUpdateRequest {
+        ProfileUpdateRequest(
+            nickname: nickname.isEmpty ? fallbackNickname : nickname,
+            gender: normalizedGender,
+            height: Double(height),
+            weight: Double(weight),
+            age: age,
+            goal: normalizedGoal,
+            activityLevel: normalizedActivityLevel
+        )
+    }
+
+    private var normalizedGender: String {
+        switch gender {
+        case "男":
+            return "male"
+        case "女":
+            return "female"
+        default:
+            return "other"
+        }
+    }
+
+    private var normalizedGoal: String {
+        switch goal {
+        case "减重":
+            return "lose_weight"
+        case "增肌":
+            return "gain_muscle"
+        case "保持", "记录":
+            return "maintain"
+        default:
+            return "maintain"
+        }
+    }
+
+    private var normalizedActivityLevel: String {
+        switch activityLevel {
+        case "久坐":
+            return "sedentary"
+        case "轻度":
+            return "lightly_active"
+        case "中度":
+            return "moderately_active"
+        case "高度":
+            return "very_active"
+        default:
+            return "sedentary"
+        }
+    }
 }
