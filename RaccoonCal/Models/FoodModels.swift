@@ -103,4 +103,10 @@ struct NutritionStats: Codable {
     let avgProtein: Double
     let avgFat: Double
     let avgCarbs: Double
+    /// 有饮食记录的天数
+    let totalDays: Int
+    /// 饮食记录总条数
+    let totalRecords: Int
+    /// 有记录天数的平均卡路里
+    let avgCalories: Double
 }
