@@ -18,9 +18,16 @@ struct RecognizedFood: Codable {
 }
 
 /// 食物识别响应
-struct FoodRecognitionResult: Codable {
+struct FoodRecognitionResult: Codable, Identifiable {
+    /// Synthetic id so this can be used with `.sheet(item:)`
+    var id: UUID = UUID()
     let foods: [RecognizedFood]
     let confidence: Double
+
+    // Keep UUID out of JSON encoding/decoding
+    enum CodingKeys: String, CodingKey {
+        case foods, confidence
+    }
 }
 
 // MARK: - 饮食记录

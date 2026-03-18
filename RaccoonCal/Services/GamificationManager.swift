@@ -122,8 +122,17 @@ class GamificationManager: ObservableObject {
     }
 
     // MARK: - Pet Methods (Task 13.5)
+
+    /// 从服务器拉取宠物状态（含饱食度/心情），更新 petStatus
+    func loadPetStatus() async {
+        do {
+            petStatus = try await apiService.getPetStatus()
+        } catch {
+            print("[GamificationManager] loadPetStatus error: \(error.localizedDescription)")
+        }
+    }
+
     // TODO: 13.5 — Add methods:
-    //   func loadPetStatus() async
     //   func interactWithPet() async
     //   func updatePetOutfit(_ outfit: PetOutfitRequest) async
 
