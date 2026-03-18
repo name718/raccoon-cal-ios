@@ -229,10 +229,10 @@
 
 ### 任务 15：共享 UI 组件
 
-- [ ] 15.1 创建 `Views/Components/CalorieRingView.swift`（环形进度条，超标时切换警告色）
-- [ ] 15.2 创建 `Views/Components/HPHeartView.swift`（心形图标列表，最多 5 颗）
-- [ ] 15.3 创建 `Views/Components/XPFloatLabel.swift`（浮动 "+N XP" 动画标签）
-- [ ] 15.4 创建 `Views/Components/RaccoonMoodView.swift`（根据 PetMood 切换对应静态图片，使用 Assets 中已有 PNG：RaccoonHappy/RaccoonLoading/RaccoonThinking 等）
+- [x] 15.1 创建 `Views/Components/CalorieRingView.swift`（环形进度条，超标时切换警告色）
+- [x] 15.2 创建 `Views/Components/HPHeartView.swift`（心形图标列表，最多 5 颗）
+- [x] 15.3 创建 `Views/Components/XPFloatLabel.swift`（浮动 "+N XP" 动画标签）
+- [x] 15.4 创建 `Views/Components/RaccoonMoodView.swift`（根据 PetMood 切换对应静态图片，使用 Assets 中已有 PNG：RaccoonHappy/RaccoonLoading/RaccoonThinking 等）
 
 **属性测试（SwiftCheck）**：
 - Property 1（卡路里进度比例有界性：输入任意值，进度 clamp 到 [0,1]）
