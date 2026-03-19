@@ -6,6 +6,7 @@
 //
 
 import SwiftUI
+import UIKit
 
 // MARK: - AchievementGridView
 
@@ -55,11 +56,9 @@ private struct AchievementBadgeCell: View {
                             )
                     )
 
-                // Icon emoji or system icon
-                Text(emojiForIcon(achievement.iconName))
-                    .font(.system(size: 26))
+                badgeImage(size: 38)
                     .grayscale(achievement.unlocked ? 0 : 1)
-                    .opacity(achievement.unlocked ? 1 : 0.4)
+                    .opacity(achievement.unlocked ? 1 : 0.5)
 
                 // Lock overlay for locked achievements
                 if !achievement.unlocked {
@@ -132,46 +131,18 @@ private struct AchievementBadgeCell: View {
         )
     }
 
-    /// Map iconName string to an emoji. Falls back to a trophy emoji.
-    private func emojiForIcon(_ iconName: String) -> String {
-        let map: [String: String] = [
-            "trophy":        "🏆",
-            "star":          "⭐",
-            "fire":          "🔥",
-            "streak":        "🔥",
-            "food":          "🍱",
-            "camera":        "📷",
-            "heart":         "❤️",
-            "muscle":        "💪",
-            "run":           "🏃",
-            "salad":         "🥗",
-            "apple":         "🍎",
-            "water":         "💧",
-            "moon":          "🌙",
-            "sun":           "☀️",
-            "calendar":      "📅",
-            "medal":         "🥇",
-            "crown":         "👑",
-            "lightning":     "⚡",
-            "shield":        "🛡️",
-            "raccoon":       "🦝",
-            "first_record":  "🍱",
-            "week_streak":   "🔥",
-            "month_streak":  "🏅",
-            "century_streak":"🏆",
-            "calorie_goal":  "🎯",
-            "protein_goal":  "💪",
-            "explorer":      "🗺️",
-            "social":        "👥",
-            "night_owl":     "🦉",
-            "early_bird":    "🐦",
-        ]
-        // Try exact match first, then prefix match
-        if let emoji = map[iconName] { return emoji }
-        for (key, emoji) in map {
-            if iconName.lowercased().contains(key) { return emoji }
+    @ViewBuilder
+    private func badgeImage(size: CGFloat) -> some View {
+        if let image = AchievementArtwork.image(for: achievement) {
+            Image(uiImage: image)
+                .resizable()
+                .scaledToFit()
+                .frame(width: size, height: size)
+        } else {
+            Image(systemName: "trophy.fill")
+                .font(.system(size: size * 0.65, weight: .semibold))
+                .foregroundColor(achievement.unlocked ? AppTheme.primaryDark : AppTheme.textDisabled)
         }
-        return "🏆"
     }
 }
 
@@ -210,10 +181,9 @@ private struct AchievementDetailSheet: View {
                                     )
                             )
 
-                        Text(emojiForIcon(achievement.iconName))
-                            .font(.system(size: 48))
+                        badgeImage(size: 68)
                             .grayscale(achievement.unlocked ? 0 : 1)
-                            .opacity(achievement.unlocked ? 1 : 0.4)
+                            .opacity(achievement.unlocked ? 1 : 0.5)
                     }
                     .padding(.top, 8)
 
@@ -318,44 +288,18 @@ private struct AchievementDetailSheet: View {
         }
     }
 
-    private func emojiForIcon(_ iconName: String) -> String {
-        let map: [String: String] = [
-            "trophy":        "🏆",
-            "star":          "⭐",
-            "fire":          "🔥",
-            "streak":        "🔥",
-            "food":          "🍱",
-            "camera":        "📷",
-            "heart":         "❤️",
-            "muscle":        "💪",
-            "run":           "🏃",
-            "salad":         "🥗",
-            "apple":         "🍎",
-            "water":         "💧",
-            "moon":          "🌙",
-            "sun":           "☀️",
-            "calendar":      "📅",
-            "medal":         "🥇",
-            "crown":         "👑",
-            "lightning":     "⚡",
-            "shield":        "🛡️",
-            "raccoon":       "🦝",
-            "first_record":  "🍱",
-            "week_streak":   "🔥",
-            "month_streak":  "🏅",
-            "century_streak":"🏆",
-            "calorie_goal":  "🎯",
-            "protein_goal":  "💪",
-            "explorer":      "🗺️",
-            "social":        "👥",
-            "night_owl":     "🦉",
-            "early_bird":    "🐦",
-        ]
-        if let emoji = map[iconName] { return emoji }
-        for (key, emoji) in map {
-            if iconName.lowercased().contains(key) { return emoji }
+    @ViewBuilder
+    private func badgeImage(size: CGFloat) -> some View {
+        if let image = AchievementArtwork.image(for: achievement) {
+            Image(uiImage: image)
+                .resizable()
+                .scaledToFit()
+                .frame(width: size, height: size)
+        } else {
+            Image(systemName: "trophy.fill")
+                .font(.system(size: size * 0.65, weight: .semibold))
+                .foregroundColor(achievement.unlocked ? AppTheme.primaryDark : AppTheme.textDisabled)
         }
-        return "🏆"
     }
 
     private func formattedDate(_ isoString: String) -> String {
@@ -377,16 +321,70 @@ private struct AchievementDetailSheet: View {
     }
 }
 
+private enum AchievementArtwork {
+    private static let keyToAssetName: [String: String] = [
+        "first_record": "AchievementFirstRecord",
+        "record_10": "AchievementRecord10",
+        "record_50": "AchievementRecord50",
+        "record_100": "AchievementRecord100",
+        "goal_first_day": "AchievementGoalFirstDay",
+        "goal_7_days": "AchievementGoal7Days",
+        "goal_30_days": "AchievementGoal30Days",
+        "streak_3": "AchievementStreak3",
+        "streak_7": "AchievementStreak7",
+        "streak_30": "AchievementStreak30",
+        "streak_100": "AchievementStreak100",
+        "level_5": "AchievementLevel5",
+        "level_10": "AchievementLevel10",
+        "level_20": "AchievementLevel20",
+        "level_50": "AchievementLevel50",
+        "task_first": "AchievementTaskFirst",
+        "task_full_day": "AchievementTaskFullDay",
+        "task_full_week": "AchievementTaskFullWeek",
+        "pet_first_interact": "AchievementPetFirstInteract",
+        "pet_interact_30": "AchievementPetInteract30",
+        "league_first_join": "AchievementLeagueFirstJoin",
+        "league_promoted": "AchievementLeaguePromoted",
+        "weight_first": "AchievementWeightFirst",
+        "weight_10_records": "AchievementWeight10Records",
+    ]
+
+    static func image(for achievement: Achievement) -> UIImage? {
+        for candidate in candidateAssetNames(for: achievement) {
+            if let image = UIImage(named: candidate) {
+                return image
+            }
+        }
+        return nil
+    }
+
+    private static func candidateAssetNames(for achievement: Achievement) -> [String] {
+        var names: [String] = []
+
+        if let assetName = keyToAssetName[achievement.key] {
+            names.append(assetName)
+        }
+
+        names.append(achievement.iconName)
+
+        var uniqueNames: [String] = []
+        for name in names where !uniqueNames.contains(name) {
+            uniqueNames.append(name)
+        }
+        return uniqueNames
+    }
+}
+
 // MARK: - Preview
 
 #Preview {
     let sample: [Achievement] = [
-        Achievement(key: "first_record", title: "初次记录", description: "第一次记录饮食", xpReward: 50, iconName: "food", unlocked: true, unlockedAt: "2024-01-15T10:00:00Z"),
-        Achievement(key: "week_streak", title: "7天连续", description: "连续打卡7天", xpReward: 100, iconName: "streak", unlocked: true, unlockedAt: nil),
-        Achievement(key: "calorie_goal", title: "达成目标", description: "达成每日卡路里目标", xpReward: 30, iconName: "calorie_goal", unlocked: false, unlockedAt: nil),
-        Achievement(key: "month_streak", title: "30天连续", description: "连续打卡30天", xpReward: 200, iconName: "month_streak", unlocked: false, unlockedAt: nil),
-        Achievement(key: "explorer", title: "探索者", description: "识别10种不同食物", xpReward: 80, iconName: "explorer", unlocked: false, unlockedAt: nil),
-        Achievement(key: "crown", title: "联盟冠军", description: "联盟排名第一", xpReward: 500, iconName: "crown", unlocked: false, unlockedAt: nil),
+        Achievement(key: "first_record", title: "初次记录", description: "第一次记录饮食", xpReward: 50, iconName: "AchievementFirstRecord", unlocked: true, unlockedAt: "2024-01-15T10:00:00Z"),
+        Achievement(key: "streak_7", title: "一周坚持", description: "连续打卡7天", xpReward: 100, iconName: "AchievementStreak7", unlocked: true, unlockedAt: nil),
+        Achievement(key: "goal_first_day", title: "初次达标", description: "达成每日卡路里目标", xpReward: 30, iconName: "AchievementGoalFirstDay", unlocked: false, unlockedAt: nil),
+        Achievement(key: "streak_30", title: "月度坚持", description: "连续打卡30天", xpReward: 200, iconName: "AchievementStreak30", unlocked: false, unlockedAt: nil),
+        Achievement(key: "level_5", title: "初级探索者", description: "达到 5 级", xpReward: 80, iconName: "AchievementLevel5", unlocked: false, unlockedAt: nil),
+        Achievement(key: "league_promoted", title: "联盟晋升", description: "联盟排名提升", xpReward: 500, iconName: "AchievementLeaguePromoted", unlocked: false, unlockedAt: nil),
     ]
     ScrollView {
         AchievementGridView(achievements: sample)
