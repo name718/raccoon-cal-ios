@@ -39,6 +39,12 @@ struct LeagueSettlementSheet: View {
         return "你成功保住了联盟席位，继续保持！"
     }
 
+    private var resultSymbolName: String {
+        if isPromoted { return "arrow.up.circle.fill" }
+        if isDemoted  { return "arrow.down.circle.fill" }
+        return "checkmark.seal.fill"
+    }
+
     private var accentColor: Color {
         if isPromoted { return AppTheme.secondary }
         if isDemoted  { return AppTheme.accent }
@@ -47,11 +53,11 @@ struct LeagueSettlementSheet: View {
 
     private var tierName: String {
         switch settlement.newTier.lowercased() {
-        case "bronze":   return "🥉 青铜"
-        case "silver":   return "🥈 白银"
-        case "gold":     return "🥇 黄金"
-        case "platinum": return "💎 铂金"
-        case "diamond":  return "💠 钻石"
+        case "bronze":   return "青铜"
+        case "silver":   return "白银"
+        case "gold":     return "黄金"
+        case "platinum": return "铂金"
+        case "diamond":  return "钻石"
         default:         return settlement.newTier
         }
     }
@@ -92,8 +98,9 @@ struct LeagueSettlementSheet: View {
                     .padding(.bottom, 16)
 
                 // Result badge
-                Text(isPromoted ? "⬆️" : isDemoted ? "⬇️" : "✅")
-                    .font(.system(size: 36))
+                Image(systemName: resultSymbolName)
+                    .font(.system(size: 36, weight: .bold))
+                    .foregroundColor(accentColor)
                     .scaleEffect(appeared ? 1.0 : 0.3)
                     .opacity(appeared ? 1.0 : 0.0)
                     .animation(.spring(response: 0.5, dampingFraction: 0.6).delay(0.1), value: appeared)

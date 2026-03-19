@@ -427,7 +427,7 @@ struct RecordView: View {
                 .foregroundColor(AppTheme.textSecondary)
 
             if !isLoading {
-                Text("拍照记录今天的饮食，养成健康好习惯 🦝")
+                Text("拍照记录今天的饮食，养成健康好习惯。")
                     .font(.system(size: 13))
                     .foregroundColor(AppTheme.textDisabled)
                     .multilineTextAlignment(.center)

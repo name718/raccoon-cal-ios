@@ -52,7 +52,7 @@ class NotificationManager: ObservableObject {
         center.removePendingNotificationRequests(withIdentifiers: [NotificationID.dailyCheckin])
 
         let content = UNMutableNotificationContent()
-        content.title = "🦝 每日打卡提醒"
+        content.title = "每日打卡提醒"
         content.body = "别忘了记录今天的饮食，浣熊在等你哦！"
         content.sound = .default
 
@@ -94,7 +94,7 @@ class NotificationManager: ObservableObject {
         center.removePendingNotificationRequests(withIdentifiers: [NotificationID.taskRefresh])
 
         let content = UNMutableNotificationContent()
-        content.title = "🦝 今日任务已刷新"
+        content.title = "今日任务已刷新"
         content.body = "新的一天，新的挑战！快来完成今日任务吧。"
         content.sound = .default
 
@@ -127,7 +127,7 @@ class NotificationManager: ObservableObject {
         center.removePendingNotificationRequests(withIdentifiers: [NotificationID.streakRisk])
 
         let content = UNMutableNotificationContent()
-        content.title = "⚠️ 连续打卡即将中断"
+        content.title = "连续打卡即将中断"
         content.body = "今天还没打卡！快去记录饮食，保住你的连续记录吧。"
         content.sound = .default
 
@@ -162,7 +162,7 @@ class NotificationManager: ObservableObject {
         center.removePendingNotificationRequests(withIdentifiers: [NotificationID.petMissing])
 
         let content = UNMutableNotificationContent()
-        content.title = "🦝 浣熊好想你..."
+        content.title = "浣熊好想你"
         content.body = "你已经 3 天没有打卡了，浣熊非常想念你，快回来吧！"
         content.sound = .default
 

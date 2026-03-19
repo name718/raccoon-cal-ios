@@ -13,10 +13,18 @@ import UIKit
 struct AchievementGridView: View {
 
     let achievements: [Achievement]
+    let totalCount: Int
+    let unlockedCount: Int
 
     @State private var selectedAchievement: Achievement?
 
     private let columns = Array(repeating: GridItem(.flexible(), spacing: 12), count: 3)
+
+    init(achievements: [Achievement], totalCount: Int? = nil, unlockedCount: Int? = nil) {
+        self.achievements = achievements
+        self.totalCount = totalCount ?? achievements.count
+        self.unlockedCount = unlockedCount ?? achievements.filter { $0.unlocked }.count
+    }
 
     var body: some View {
         LazyVGrid(columns: columns, spacing: 12) {
@@ -28,7 +36,7 @@ struct AchievementGridView: View {
         .padding(.horizontal, 16)
         .padding(.bottom, 16)
         .sheet(item: $selectedAchievement) { achievement in
-            AchievementDetailSheet(achievement: achievement, total: achievements.count, unlocked: achievements.filter { $0.unlocked }.count)
+            AchievementDetailSheet(achievement: achievement, total: totalCount, unlocked: unlockedCount)
         }
     }
 }

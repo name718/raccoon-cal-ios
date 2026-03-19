@@ -40,12 +40,12 @@ enum PetMood: String, Codable, CaseIterable {
     /// 心情中文描述
     var displayName: String {
         switch self {
-        case .happy:     return "😄 今天状态很棒"
-        case .satisfied: return "😊 吃得很满足"
-        case .normal:    return "🦝 状态正常"
-        case .hungry:    return "🍜 有点饿了"
-        case .sad:       return "😢 今天有点超标"
-        case .missing:   return "💭 好久不见"
+        case .happy:     return "今天状态很棒"
+        case .satisfied: return "吃得很满足"
+        case .normal:    return "状态正常"
+        case .hungry:    return "有点饿了"
+        case .sad:       return "今天有点超标"
+        case .missing:   return "好久不见"
         }
     }
 }

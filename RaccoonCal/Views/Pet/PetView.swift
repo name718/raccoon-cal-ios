@@ -758,28 +758,28 @@ struct PetView: View {
         let phrases: [String]
         switch currentMood {
         case .happy:
-            phrases = ["今天状态超棒！继续保持 🎉", "你做到了！浣熊为你骄傲 ⭐️"]
+            phrases = ["今天状态超棒！继续保持。", "你做到了，表现非常好。"]
         case .satisfied:
-            phrases = ["不错哦，继续记录吧 😊", "浣熊很满足，继续努力 🦝"]
+            phrases = ["不错哦，继续记录吧。", "状态很好，继续努力。"]
         case .normal:
-            phrases = ["今天才刚开始，加油！", "浣熊在等你的下一餐 🦝"]
+            phrases = ["今天才刚开始，加油！", "记得继续记录下一餐。"]
         case .hungry:
-            phrases = ["快去记录今天的第一餐吧！", "浣熊饿了，快去吃点东西 🍜"]
+            phrases = ["快去记录今天的第一餐吧！", "先去吃点东西，再回来记录。"]
         case .sad:
-            phrases = ["今天超标了，明天继续加油 💪", "没关系，明天会更好 🌟"]
+            phrases = ["今天稍微超标了，明天继续加油。", "没关系，明天会更好。"]
         case .missing:
-            phrases = ["好久不见！浣熊很想你 🦝", "欢迎回来，一起继续健康之旅 🌿"]
+            phrases = ["好久不见，欢迎回来！", "欢迎回来，一起继续健康之旅。"]
         }
-        return phrases.randomElement() ?? "加油！浣熊为你加油 🦝"
+        return phrases.randomElement() ?? "加油，继续保持。"
     }
 
     private func alreadyInteractedPhrase() -> String {
         let phrases = [
-            "今天已经互动过啦，明天再来 🦝",
-            "浣熊今天有点害羞，明天见 😊",
-            "今天的爱已经收到了，明天再来 💕"
+            "今天已经互动过啦，明天再来。",
+            "今天先休息一下，明天见。",
+            "今天的互动已经收到了，明天再来。"
         ]
-        return phrases.randomElement() ?? "今天已经互动过啦，明天再来 🦝"
+        return phrases.randomElement() ?? "今天已经互动过啦，明天再来。"
     }
 }
 

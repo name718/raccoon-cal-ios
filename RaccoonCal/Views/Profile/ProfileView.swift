@@ -31,9 +31,8 @@ struct ProfileView: View {
 
     // Sheet / alert flags
     @State private var showEditProfile = false
-    @State private var showNotificationSettings = false
     @State private var showLeagueSettlement = false
-    @State private var showLogoutAlert = false
+    @State private var showAllAchievements = false
 
     // MARK: - Computed helpers
 
@@ -48,6 +47,18 @@ struct ProfileView: View {
 
     private var unlockedCount: Int { gamificationManager.achievements.filter { $0.unlocked }.count }
     private var totalAchievements: Int { gamificationManager.achievements.count }
+    private var sortedAchievements: [Achievement] {
+        gamificationManager.achievements.sorted { lhs, rhs in
+            if lhs.unlocked != rhs.unlocked {
+                return lhs.unlocked && !rhs.unlocked
+            }
+            return lhs.key < rhs.key
+        }
+    }
+    private var shouldCollapseAchievements: Bool { sortedAchievements.count > 6 }
+    private var displayedAchievements: [Achievement] {
+        showAllAchievements ? sortedAchievements : Array(sortedAchievements.prefix(6))
+    }
 
     // MARK: - Body
 
@@ -67,8 +78,6 @@ struct ProfileView: View {
                             achievementsSection      // 20.6
                             leagueSection            // 20.7
                             weightHistorySection     // 20.8
-                            notificationSettingsRow  // 20.9
-                            logoutButton
                         }
                         .padding(.horizontal, 16)
                         .padding(.bottom, 32)
@@ -91,6 +100,16 @@ struct ProfileView: View {
             }
             .navigationTitle("我的")
             .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .navigationBarTrailing) {
+                    NavigationLink(destination: ProfileSettingsView()) {
+                        Image(systemName: "gearshape.fill")
+                            .font(.system(size: 16, weight: .semibold))
+                            .foregroundColor(AppTheme.primary)
+                    }
+                    .accessibilityLabel("打开设置")
+                }
+            }
             .sheet(isPresented: $showEditProfile) {
                 if let profile = userProfile {
                     ProfileEditView(profile: profile) { updated in
@@ -98,7 +117,6 @@ struct ProfileView: View {
                     }
                 }
             }
-            .sheet(isPresented: $showNotificationSettings) { NotificationSettingsView() }
             .sheet(isPresented: $showLeagueSettlement) {
                 if let settlement = gamificationManager.leagueSettlement {
                     LeagueSettlementSheet(settlement: settlement) {
@@ -107,14 +125,6 @@ struct ProfileView: View {
                     }
                 }
             }
-            .appDialog(
-                isPresented: $showLogoutAlert,
-                title: "确认退出",
-                message: "确定要退出登录吗？",
-                tone: .warning,
-                primaryAction: AppDialogAction("退出", role: .destructive) { userManager.logout() },
-                secondaryAction: AppDialogAction("取消", role: .cancel)
-            )
         }
         .delayedLoadingOverlay(
             isLoading: isLoading || isLoadingStats || gamificationManager.isLoading,
@@ -202,7 +212,7 @@ struct ProfileView: View {
                 // 目标 / 活动水平 两行
                 VStack(spacing: 8) {
                     profileInfoRow(
-                        icon: "target",
+                        icon: "scope",
                         label: "目标",
                         value: goalDisplayName(p.goal),
                         color: AppTheme.secondary
@@ -323,7 +333,7 @@ struct ProfileView: View {
                     statCell(
                         value: nutritionStats.map { "\(Int($0.avgCalories))" } ?? "--",
                         label: "平均卡路里",
-                        icon: "flame"
+                        icon: "flame.fill"
                     )
                 }
                 .padding(.vertical, 12)
@@ -469,9 +479,29 @@ struct ProfileView: View {
             }
 
             if gamificationManager.achievements.isEmpty {
-                emptyPlaceholder(icon: "trophy", message: "成就加载中...")
+                emptyPlaceholder(icon: "trophy.fill", message: "成就加载中...")
             } else {
-                AchievementGridView(achievements: gamificationManager.achievements)
+                AchievementGridView(
+                    achievements: displayedAchievements,
+                    totalCount: totalAchievements,
+                    unlockedCount: unlockedCount
+                )
+
+                if shouldCollapseAchievements {
+                    Button(action: { showAllAchievements.toggle() }) {
+                        HStack(spacing: 6) {
+                            Text(showAllAchievements ? "收起成就" : "查看全部 \(totalAchievements) 项成就")
+                                .font(.system(size: 13, weight: .semibold))
+                            Image(systemName: showAllAchievements ? "chevron.up" : "chevron.down")
+                                .font(.system(size: 11, weight: .semibold))
+                        }
+                        .foregroundColor(AppTheme.primary)
+                        .frame(maxWidth: .infinity)
+                        .padding(.horizontal, 16)
+                        .padding(.bottom, 16)
+                    }
+                    .buttonStyle(.plain)
+                }
             }
         }
         .cardBackground()
@@ -507,14 +537,25 @@ struct ProfileView: View {
                 // ── 当前联盟 + 本周排名 + 本周 XP ──
                 HStack(spacing: 0) {
                     leagueStatCell(
+                        icon: "shield.fill",
                         value: leagueTierName(league.tier),
                         label: "当前联盟",
                         color: leagueTierColor(league.tier)
                     )
                     Divider().frame(height: 40)
-                    leagueStatCell(value: "#\(league.userRank)", label: "本周排名", color: AppTheme.textPrimary)
+                    leagueStatCell(
+                        icon: "list.number",
+                        value: "#\(league.userRank)",
+                        label: "本周排名",
+                        color: AppTheme.textPrimary
+                    )
                     Divider().frame(height: 40)
-                    leagueStatCell(value: "\(league.userWeeklyXp) XP", label: "本周经验", color: AppTheme.secondary)
+                    leagueStatCell(
+                        icon: "star.fill",
+                        value: "\(league.userWeeklyXp) XP",
+                        label: "本周经验",
+                        color: AppTheme.secondary
+                    )
                 }
                 .padding(.vertical, 12)
 
@@ -523,7 +564,7 @@ struct ProfileView: View {
                     Image(systemName: "shield.fill")
                         .font(.system(size: 12))
                         .foregroundColor(leagueTierColor(league.tier))
-                    Text(league.leagueName)
+                    Text(leagueSubtitle(for: league))
                         .font(.system(size: 12, weight: .medium))
                         .foregroundColor(AppTheme.textSecondary)
                     Spacer()
@@ -561,7 +602,7 @@ struct ProfileView: View {
                 }
             } else {
                 // Empty state
-                emptyPlaceholder(icon: "person.3", message: "暂无联盟信息")
+                emptyPlaceholder(icon: "person.3.fill", message: "暂无联盟信息")
             }
         }
         .cardBackground()
@@ -575,10 +616,12 @@ struct ProfileView: View {
             // Rank number
             rankBadge(rank: member.rank)
 
-            // Pet mood emoji
-            Text(moodEmoji(for: member.petAvatarMood))
-                .font(.system(size: 24))
-                .frame(width: 32, height: 32)
+            ZStack {
+                Circle()
+                    .fill(AppTheme.primaryLight.opacity(0.28))
+                    .frame(width: 36, height: 36)
+                RaccoonMoodView(mood: petMood(for: member.petAvatarMood), size: 28)
+            }
 
             // Nickname
             Text(member.nickname)
@@ -614,45 +657,25 @@ struct ProfileView: View {
 
     private func rankBadge(rank: Int) -> some View {
         ZStack {
-            if rank == 1 {
-                Circle()
-                    .fill(Color(red: 1.0, green: 0.84, blue: 0.0).opacity(0.2))
-                    .frame(width: 28, height: 28)
-                Text("🥇")
-                    .font(.system(size: 16))
-            } else if rank == 2 {
-                Circle()
-                    .fill(Color(red: 0.75, green: 0.75, blue: 0.75).opacity(0.2))
-                    .frame(width: 28, height: 28)
-                Text("🥈")
-                    .font(.system(size: 16))
-            } else if rank == 3 {
-                Circle()
-                    .fill(Color(red: 0.8, green: 0.5, blue: 0.2).opacity(0.2))
-                    .frame(width: 28, height: 28)
-                Text("🥉")
-                    .font(.system(size: 16))
-            } else {
-                Circle()
-                    .fill(AppTheme.backgroundSecondary)
-                    .frame(width: 28, height: 28)
-                Text("\(rank)")
-                    .font(.system(size: 12, weight: .semibold))
-                    .foregroundColor(AppTheme.textSecondary)
-            }
+            Circle()
+                .fill(rankBadgeColor(rank).opacity(rank <= 3 ? 0.22 : 1))
+                .frame(width: 30, height: 30)
+            Text("\(rank)")
+                .font(.system(size: 12, weight: .bold))
+                .foregroundColor(rank <= 3 ? rankTextColor(rank) : AppTheme.textSecondary)
         }
-        .frame(width: 28, height: 28)
+        .frame(width: 30, height: 30)
     }
 
-    private func moodEmoji(for mood: String) -> String {
+    private func petMood(for mood: String) -> PetMood {
         switch mood.lowercased() {
-        case "happy":     return "😄"
-        case "satisfied": return "😊"
-        case "normal":    return "🦝"
-        case "hungry":    return "🍜"
-        case "sad":       return "😢"
-        case "missing":   return "💭"
-        default:          return "🦝"
+        case "happy":     return .happy
+        case "satisfied": return .satisfied
+        case "normal":    return .normal
+        case "hungry":    return .hungry
+        case "sad":       return .sad
+        case "missing":   return .missing
+        default:          return .normal
         }
     }
 
@@ -662,7 +685,8 @@ struct ProfileView: View {
         VStack(alignment: .leading, spacing: 0) {
             // Header row with latest weight + record count
             HStack {
-                sectionHeader(title: "体重历史（近 30 天）", icon: "chart.line.uptrend.xyaxis")
+                sectionHeader(title: "体重历史（近 30 天）", icon: "scalemass.fill")
+                
                 Spacer()
                 if let latest = weightHistory.sorted(by: { $0.recordedAt < $1.recordedAt }).last {
                     VStack(alignment: .trailing, spacing: 2) {
@@ -681,47 +705,6 @@ struct ProfileView: View {
             WeightLineChartView(records: weightHistory)
         }
         .cardBackground()
-    }
-
-    // MARK: - 20.9 通知设置入口（占位，20.9 填充）
-
-    private var notificationSettingsRow: some View {
-        Button(action: { showNotificationSettings = true }) {
-            HStack(spacing: 12) {
-                Image(systemName: "bell.badge.fill")
-                    .font(.system(size: 18))
-                    .foregroundColor(AppTheme.primary)
-                    .frame(width: 28)
-                Text("通知设置")
-                    .font(.system(size: 15))
-                    .foregroundColor(AppTheme.textPrimary)
-                Spacer()
-                Image(systemName: "chevron.right")
-                    .font(.system(size: 12))
-                    .foregroundColor(AppTheme.textDisabled)
-            }
-            .padding(.horizontal, 16)
-            .padding(.vertical, 14)
-        }
-        .buttonStyle(.plain)
-        .cardBackground()
-    }
-
-    // MARK: - 登出
-
-    private var logoutButton: some View {
-        Button(action: { showLogoutAlert = true }) {
-            HStack {
-                Image(systemName: "rectangle.portrait.and.arrow.right")
-                Text("退出登录")
-            }
-            .font(.system(size: 15, weight: .semibold))
-            .foregroundColor(AppTheme.error)
-            .frame(maxWidth: .infinity)
-            .padding(.vertical, 14)
-            .background(RoundedRectangle(cornerRadius: 16).fill(AppTheme.error.opacity(0.08)))
-        }
-        .buttonStyle(.plain)
     }
 
     // MARK: - 20.10 联盟结算（任务 20.10）
@@ -780,8 +763,11 @@ struct ProfileView: View {
         .frame(maxWidth: .infinity)
     }
 
-    private func leagueStatCell(value: String, label: String, color: Color) -> some View {
+    private func leagueStatCell(icon: String, value: String, label: String, color: Color) -> some View {
         VStack(spacing: 4) {
+            Image(systemName: icon)
+                .font(.system(size: 15, weight: .semibold))
+                .foregroundColor(color)
             Text(value).font(.system(size: 18, weight: .bold)).foregroundColor(color)
             Text(label).font(.system(size: 11)).foregroundColor(AppTheme.textSecondary)
         }
@@ -802,12 +788,23 @@ struct ProfileView: View {
 
     private func leagueTierName(_ tier: String) -> String {
         switch tier.lowercased() {
-        case "bronze":   return "🥉 青铜"
-        case "silver":   return "🥈 白银"
-        case "gold":     return "🥇 黄金"
-        case "platinum": return "💎 铂金"
-        case "diamond":  return "💠 钻石"
+        case "bronze":   return "青铜"
+        case "silver":   return "白银"
+        case "gold":     return "黄金"
+        case "platinum": return "铂金"
+        case "diamond":  return "钻石"
         default:         return tier
+        }
+    }
+
+    private func leagueSubtitle(for league: LeagueInfo) -> String {
+        switch league.tier.lowercased() {
+        case "bronze":   return "青铜联盟"
+        case "silver":   return "白银联盟"
+        case "gold":     return "黄金联盟"
+        case "platinum": return "铂金联盟"
+        case "diamond":  return "钻石联盟"
+        default:         return league.leagueName
         }
     }
 
@@ -820,6 +817,19 @@ struct ProfileView: View {
         case "diamond":  return Color(red: 0.3, green: 0.6, blue: 1.0)
         default:         return AppTheme.textSecondary
         }
+    }
+
+    private func rankBadgeColor(_ rank: Int) -> Color {
+        switch rank {
+        case 1: return Color(red: 1.0, green: 0.84, blue: 0.0)
+        case 2: return Color(red: 0.72, green: 0.75, blue: 0.8)
+        case 3: return Color(red: 0.78, green: 0.53, blue: 0.32)
+        default: return AppTheme.backgroundSecondary
+        }
+    }
+
+    private func rankTextColor(_ rank: Int) -> Color {
+        rank <= 3 ? AppTheme.textPrimary : AppTheme.textSecondary
     }
 
     // MARK: - Data Loading

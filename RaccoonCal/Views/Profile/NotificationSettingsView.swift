@@ -23,11 +23,6 @@ private enum NotifKey {
 // MARK: - NotificationSettingsView
 
 struct NotificationSettingsView: View {
-
-    // MARK: - Environment
-
-    @Environment(\.dismiss) private var dismiss
-
     // MARK: - Notification Manager
 
     private let notificationManager = NotificationManager.shared
@@ -77,31 +72,23 @@ struct NotificationSettingsView: View {
     // MARK: - Body
 
     var body: some View {
-        NavigationView {
-            ZStack {
-                AppTheme.gradientBackground.ignoresSafeArea()
+        ZStack {
+            AppTheme.gradientBackground.ignoresSafeArea()
 
-                ScrollView {
-                    VStack(spacing: 16) {
-                        headerImage
-                        checkinCard
-                        taskRefreshCard
-                        leagueCard
-                        Spacer(minLength: 32)
-                    }
-                    .padding(.horizontal, 16)
-                    .padding(.top, 8)
+            ScrollView {
+                VStack(spacing: 16) {
+                    headerImage
+                    checkinCard
+                    taskRefreshCard
+                    leagueCard
+                    Spacer(minLength: 32)
                 }
-            }
-            .navigationTitle("通知设置")
-            .navigationBarTitleDisplayMode(.inline)
-            .toolbar {
-                ToolbarItem(placement: .navigationBarLeading) {
-                    Button("关闭") { dismiss() }
-                        .foregroundColor(AppTheme.primary)
-                }
+                .padding(.horizontal, 16)
+                .padding(.top, 8)
             }
         }
+        .navigationTitle("通知设置")
+        .navigationBarTitleDisplayMode(.inline)
     }
 
     // MARK: - Header
