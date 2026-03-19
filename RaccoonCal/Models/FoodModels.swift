@@ -8,13 +8,37 @@ import Foundation
 // MARK: - 食物识别
 
 /// 单个识别食物结果
-struct RecognizedFood: Codable {
+struct RecognizedFood: Codable, Identifiable {
+    var id: UUID = UUID()
     let name: String
     let calories: Double
     let protein: Double
     let fat: Double
     let carbs: Double
     let servingSize: Double
+    let mealType: String?
+
+    enum CodingKeys: String, CodingKey {
+        case name, calories, protein, fat, carbs, servingSize, mealType
+    }
+
+    init(
+        name: String,
+        calories: Double,
+        protein: Double,
+        fat: Double,
+        carbs: Double,
+        servingSize: Double,
+        mealType: String? = nil
+    ) {
+        self.name = name
+        self.calories = calories
+        self.protein = protein
+        self.fat = fat
+        self.carbs = carbs
+        self.servingSize = servingSize
+        self.mealType = mealType
+    }
 }
 
 /// 食物识别响应

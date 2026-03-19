@@ -243,6 +243,62 @@ class APIService: ObservableObject {
         return data
     }
 
+    /// POST /api/food/uploads — 上传饮食记录照片，返回图片地址
+    func uploadFoodRecordImage(
+        imageData: Data,
+        mimeType: String = "image/jpeg",
+        filename: String = "food.jpg"
+    ) async throws -> String {
+        struct UploadFoodImageResponse: Codable {
+            let imageUrl: String
+        }
+
+        guard let url = URL(string: baseURL + "/food/uploads") else {
+            throw APIServiceError.invalidURL
+        }
+
+        let boundary = "Boundary-\(UUID().uuidString)"
+        var request = URLRequest(url: url)
+        request.httpMethod = HTTPMethod.POST.rawValue
+        request.setValue("multipart/form-data; boundary=\(boundary)", forHTTPHeaderField: "Content-Type")
+
+        if let token = UserDefaults.standard.string(forKey: "auth_token") {
+            request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
+        }
+
+        var body = Data()
+        body.append("--\(boundary)\r\n".data(using: .utf8)!)
+        body.append("Content-Disposition: form-data; name=\"image\"; filename=\"\(filename)\"\r\n".data(using: .utf8)!)
+        body.append("Content-Type: \(mimeType)\r\n\r\n".data(using: .utf8)!)
+        body.append(imageData)
+        body.append("\r\n--\(boundary)--\r\n".data(using: .utf8)!)
+        request.httpBody = body
+
+        do {
+            let (data, response) = try await session.data(for: request)
+
+            guard let httpResponse = response as? HTTPURLResponse else {
+                throw APIServiceError.invalidResponse
+            }
+
+            if httpResponse.statusCode >= 400 {
+                handleAuthenticationFailureIfNeeded(statusCode: httpResponse.statusCode)
+                throw decodeAPIError(from: data, statusCode: httpResponse.statusCode)
+            }
+
+            let decoded = try decoder.decode(APIResponse<UploadFoodImageResponse>.self, from: data)
+            guard let imageUrl = decoded.data?.imageUrl, !imageUrl.isEmpty else {
+                throw APIServiceError.noData
+            }
+
+            return imageUrl
+        } catch let error as APIServiceError {
+            throw error
+        } catch {
+            throw APIServiceError.networkError(error.localizedDescription)
+        }
+    }
+
     /// GET /api/food/records?date=YYYY-MM-DD — 获取饮食记录（可按日期过滤）
     func getFoodRecords(date: String? = nil) async throws -> DailyCalSummary {
         var endpoint = "/food/records"

@@ -333,6 +333,24 @@ struct RecordView: View {
 
     private func foodRecordRow(record: FoodRecord) -> some View {
         HStack(spacing: 12) {
+            if let imageUrl = record.imageUrl,
+               let url = URL(string: imageUrl) {
+                AsyncImage(url: url) { image in
+                    image
+                        .resizable()
+                        .scaledToFill()
+                } placeholder: {
+                    RoundedRectangle(cornerRadius: 12, style: .continuous)
+                        .fill(AppTheme.backgroundSecondary)
+                        .overlay(
+                            Image(systemName: "photo")
+                                .foregroundColor(AppTheme.textSecondary)
+                        )
+                }
+                .frame(width: 52, height: 52)
+                .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
+            }
+
             VStack(alignment: .leading, spacing: 3) {
                 Text(record.foodName)
                     .font(.system(size: 14))

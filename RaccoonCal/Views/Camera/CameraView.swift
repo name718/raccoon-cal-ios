@@ -252,6 +252,7 @@ struct CameraView: View {
     @State private var errorMessage: String? = nil
     @State private var selectedMealType: String = MealType.lunch.rawValue
     @State private var showPhotoPicker: Bool = false
+    @State private var showManualEntryEditor: Bool = false
 
     // MARK: - Body
 
@@ -300,7 +301,15 @@ struct CameraView: View {
                             }
                             .accessibilityLabel("拍照")
 
-                            Color.clear.frame(width: 52, height: 52)
+                            Button(action: { showManualEntryEditor = true }) {
+                                Image(systemName: "square.and.pencil")
+                                    .font(.system(size: 26))
+                                    .foregroundColor(.white)
+                                    .frame(width: 52, height: 52)
+                                    .background(Color.black.opacity(0.4))
+                                    .clipShape(Circle())
+                            }
+                            .accessibilityLabel("手动记录")
                         }
                         .padding(.bottom, 48)
                     }
@@ -313,6 +322,14 @@ struct CameraView: View {
                     await loadAndUploadPickedPhoto(rawData)
                 }
             }
+        }
+        .sheet(isPresented: $showManualEntryEditor) {
+            ManualFoodEntrySheet(
+                initialMealType: MealType(rawValue: selectedMealType) ?? .lunch,
+                onSaved: { _ in
+                    showManualEntryEditor = false
+                }
+            )
         }
         .sheet(item: $recognitionResult) { result in
             resultSheetView(for: result)
@@ -378,6 +395,13 @@ struct CameraView: View {
                     Label("从相册选择", systemImage: "photo.on.rectangle")
                 }
                 .appButtonStyle(kind: .primary, fullWidth: false)
+
+                Button(action: {
+                    showManualEntryEditor = true
+                }) {
+                    Label("手动记录", systemImage: "square.and.pencil")
+                }
+                .appButtonStyle(kind: .secondary, fullWidth: false)
 
                 if !simulatorCameraUnavailable {
                     Button(action: {

@@ -9,6 +9,7 @@
 //
 
 import SwiftUI
+import UIKit
 
 // MARK: - FoodResultSheet
 
@@ -210,7 +211,7 @@ struct FoodResultSheet: View {
         .sheet(item: $editingFood) { food in
             FoodEditFormView(food: food) { updatedFood in
                 // Replace the edited food in the editable list
-                if let idx = editableFoods.firstIndex(where: { $0.name == food.name }) {
+                if let idx = editableFoods.firstIndex(where: { $0.id == food.id }) {
                     editableFoods[idx] = updatedFood
                 }
                 editingFood = nil
@@ -248,7 +249,7 @@ struct FoodResultSheet: View {
                     carbs: food.carbs,
                     fiber: 0,
                     servingSize: food.servingSize,
-                    mealType: selectedMealType.rawValue,
+                    mealType: food.mealType ?? selectedMealType.rawValue,
                     imageUrl: nil,
                     recordedAt: nil
                 )
@@ -280,40 +281,42 @@ struct FoodResultSheet: View {
 
 // MARK: - FoodEditFormView (Task 17.6)
 
-/// Edit form that lets the user modify food name, serving size, and meal type.
-/// Calories/macros are recalculated proportionally when serving size changes.
+/// Edit form that lets the user modify food name, meal type, serving size and nutrition data.
 struct FoodEditFormView: View {
 
-    // Original food (used as the proportional base for recalculation)
-    private let originalFood: RecognizedFood
-
+    let attachmentImage: UIImage?
+    var onSelectPhoto: (() -> Void)?
+    var onRemovePhoto: (() -> Void)?
     var onConfirm: (RecognizedFood) -> Void
     var onCancel: () -> Void
 
     @State private var foodName: String
     @State private var servingSize: Double
-    @State private var mealType: MealType = .lunch
+    @State private var mealType: MealType
+    @State private var calories: Double
+    @State private var protein: Double
+    @State private var fat: Double
+    @State private var carbs: Double
 
     init(food: RecognizedFood,
+         attachmentImage: UIImage? = nil,
+         onSelectPhoto: (() -> Void)? = nil,
+         onRemovePhoto: (() -> Void)? = nil,
          onConfirm: @escaping (RecognizedFood) -> Void,
          onCancel: @escaping () -> Void) {
-        self.originalFood = food
+        self.attachmentImage = attachmentImage
+        self.onSelectPhoto = onSelectPhoto
+        self.onRemovePhoto = onRemovePhoto
         self.onConfirm = onConfirm
         self.onCancel = onCancel
         self._foodName = State(initialValue: food.name)
         self._servingSize = State(initialValue: food.servingSize > 0 ? food.servingSize : 100)
+        self._mealType = State(initialValue: MealType(rawValue: food.mealType ?? MealType.lunch.rawValue) ?? .lunch)
+        self._calories = State(initialValue: max(0, food.calories))
+        self._protein = State(initialValue: max(0, food.protein))
+        self._fat = State(initialValue: max(0, food.fat))
+        self._carbs = State(initialValue: max(0, food.carbs))
     }
-
-    // Proportionally recalculated nutrition values
-    private var ratio: Double {
-        guard originalFood.servingSize > 0 else { return 1 }
-        return servingSize / originalFood.servingSize
-    }
-
-    private var displayCalories: Double { originalFood.calories * ratio }
-    private var displayProtein: Double  { originalFood.protein  * ratio }
-    private var displayFat: Double      { originalFood.fat      * ratio }
-    private var displayCarbs: Double    { originalFood.carbs    * ratio }
 
     var body: some View {
         NavigationView {
@@ -322,6 +325,55 @@ struct FoodEditFormView: View {
                 Section(header: Text("食物名称")) {
                     TextField("食物名称", text: $foodName)
                         .appInputFieldStyle()
+                }
+
+                // MARK: Meal type
+                Section(header: Text("餐次")) {
+                    Picker("餐次", selection: $mealType) {
+                        ForEach(MealType.allCases, id: \.self) { type in
+                            Text(type.chineseDisplayName).tag(type)
+                        }
+                    }
+                    .pickerStyle(.segmented)
+                    .padding(.vertical, 4)
+                }
+
+                if attachmentImage != nil || onSelectPhoto != nil {
+                    Section(header: Text("记录照片")) {
+                        VStack(alignment: .leading, spacing: 12) {
+                            if let attachmentImage {
+                                Image(uiImage: attachmentImage)
+                                    .resizable()
+                                    .scaledToFill()
+                                    .frame(maxWidth: .infinity)
+                                    .frame(height: 180)
+                                    .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
+                            }
+
+                            Text(attachmentImage == nil ? "可选，上传一张照片方便后续核对记录。" : "已附加照片，保存后会和这条饮食记录一起上传。")
+                                .font(.footnote)
+                                .foregroundColor(AppTheme.textSecondary)
+
+                            HStack(spacing: 12) {
+                                if let onSelectPhoto {
+                                    Button(action: onSelectPhoto) {
+                                        Label(attachmentImage == nil ? "上传照片" : "更换照片", systemImage: "photo.on.rectangle")
+                                            .frame(maxWidth: .infinity)
+                                    }
+                                    .appButtonStyle(kind: .secondary, fullWidth: true)
+                                }
+
+                                if attachmentImage != nil, let onRemovePhoto {
+                                    Button(role: .destructive, action: onRemovePhoto) {
+                                        Label("移除", systemImage: "trash")
+                                            .frame(maxWidth: .infinity)
+                                    }
+                                    .appButtonStyle(kind: .secondary, fullWidth: true)
+                                }
+                            }
+                        }
+                        .padding(.vertical, 4)
+                    }
                 }
 
                 // MARK: Serving size
@@ -368,23 +420,12 @@ struct FoodEditFormView: View {
                     .padding(.vertical, 4)
                 }
 
-                // MARK: Meal type
-                Section(header: Text("餐次")) {
-                    Picker("餐次", selection: $mealType) {
-                        ForEach(MealType.allCases, id: \.self) { type in
-                            Text(type.chineseDisplayName).tag(type)
-                        }
-                    }
-                    .pickerStyle(.segmented)
-                    .padding(.vertical, 4)
-                }
-
-                // MARK: Nutrition (read-only)
-                Section(header: Text("营养信息（自动换算）")) {
-                    NutritionRow(label: "热量", value: displayCalories, unit: "kcal", color: AppTheme.primary)
-                    NutritionRow(label: "蛋白质", value: displayProtein, unit: "g", color: AppTheme.info)
-                    NutritionRow(label: "脂肪", value: displayFat, unit: "g", color: AppTheme.accent)
-                    NutritionRow(label: "碳水", value: displayCarbs, unit: "g", color: AppTheme.secondary)
+                // MARK: Nutrition
+                Section(header: Text("营养信息")) {
+                    NutritionInputRow(label: "热量", unit: "kcal", value: $calories, color: AppTheme.primary)
+                    NutritionInputRow(label: "蛋白质", unit: "g", value: $protein, color: AppTheme.info)
+                    NutritionInputRow(label: "脂肪", unit: "g", value: $fat, color: AppTheme.accent)
+                    NutritionInputRow(label: "碳水", unit: "g", value: $carbs, color: AppTheme.secondary)
                 }
             }
             .navigationTitle("编辑食物")
@@ -414,11 +455,12 @@ struct FoodEditFormView: View {
         let clamped = min(9999, max(1, servingSize))
         let updated = RecognizedFood(
             name: trimmed,
-            calories: originalFood.calories * (clamped / max(1, originalFood.servingSize)),
-            protein:  originalFood.protein  * (clamped / max(1, originalFood.servingSize)),
-            fat:      originalFood.fat      * (clamped / max(1, originalFood.servingSize)),
-            carbs:    originalFood.carbs    * (clamped / max(1, originalFood.servingSize)),
-            servingSize: clamped
+            calories: max(0, calories),
+            protein:  max(0, protein),
+            fat:      max(0, fat),
+            carbs:    max(0, carbs),
+            servingSize: clamped,
+            mealType: mealType.rawValue
         )
         onConfirm(updated)
     }
@@ -426,10 +468,10 @@ struct FoodEditFormView: View {
 
 // MARK: - NutritionRow
 
-private struct NutritionRow: View {
+private struct NutritionInputRow: View {
     let label: String
-    let value: Double
     let unit: String
+    @Binding var value: Double
     let color: Color
 
     var body: some View {
@@ -437,8 +479,16 @@ private struct NutritionRow: View {
             Text(label)
                 .foregroundColor(AppTheme.textPrimary)
             Spacer()
-            Text(String(format: "%.1f %@", value, unit))
-                .font(.system(size: 16, weight: .semibold))
+            TextField(label, value: $value, format: .number.precision(.fractionLength(1)))
+                .keyboardType(.decimalPad)
+                .multilineTextAlignment(.trailing)
+                .frame(width: 88)
+                .appInputFieldStyle()
+                .onChange(of: value) { newValue in
+                    value = max(0, min(9999, newValue))
+                }
+            Text(unit)
+                .font(.system(size: 14, weight: .medium))
                 .foregroundColor(color)
         }
     }
@@ -457,10 +507,150 @@ extension MealType {
     }
 }
 
-// MARK: - RecognizedFood: Identifiable (for .sheet(item:))
+// MARK: - ManualFoodEntrySheet
 
-extension RecognizedFood: Identifiable {
-    var id: String { name }
+struct ManualFoodEntrySheet: View {
+
+    let initialMealType: MealType
+    var onSaved: ((RecognizedFood) -> Void)? = nil
+
+    @Environment(\.dismiss) private var dismiss
+    @StateObject private var gamificationManager = GamificationManager.shared
+    @State private var isSaving = false
+    @State private var errorMessage: String? = nil
+    @State private var showPhotoPicker = false
+    @State private var selectedPhotoData: Data? = nil
+    @State private var progressMessage = "正在保存记录..."
+
+    private var initialFood: RecognizedFood {
+        RecognizedFood(
+            name: "",
+            calories: 0,
+            protein: 0,
+            fat: 0,
+            carbs: 0,
+            servingSize: 100,
+            mealType: initialMealType.rawValue
+        )
+    }
+
+    private var selectedPhotoImage: UIImage? {
+        guard let selectedPhotoData else { return nil }
+        return UIImage(data: selectedPhotoData)
+    }
+
+    var body: some View {
+        ZStack {
+            FoodEditFormView(
+                food: initialFood,
+                attachmentImage: selectedPhotoImage,
+                onSelectPhoto: {
+                    showPhotoPicker = true
+                },
+                onRemovePhoto: {
+                    selectedPhotoData = nil
+                },
+                onConfirm: { updatedFood in
+                    Task { await save(updatedFood) }
+                },
+                onCancel: {
+                    dismiss()
+                }
+            )
+
+            if isSaving {
+                Color.black.opacity(0.08)
+                    .ignoresSafeArea()
+
+                ProgressView(progressMessage)
+                    .padding(.horizontal, 20)
+                    .padding(.vertical, 14)
+                    .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 16, style: .continuous))
+            }
+        }
+        .sheet(isPresented: $showPhotoPicker) {
+            PhotoLibraryPicker { rawData in
+                if let normalizedData = normalizedUploadImageData(from: rawData) {
+                    selectedPhotoData = normalizedData
+                } else {
+                    errorMessage = "图片处理失败，请重新选择"
+                }
+            }
+        }
+        .appDialog(
+            isPresented: Binding(
+                get: { errorMessage != nil },
+                set: { if !$0 { errorMessage = nil } }
+            ),
+            title: "保存失败",
+            message: errorMessage ?? "",
+            tone: .error,
+            primaryAction: AppDialogAction("确定") {
+                errorMessage = nil
+            }
+        )
+    }
+
+    @MainActor
+    private func save(_ food: RecognizedFood) async {
+        isSaving = true
+        errorMessage = nil
+        progressMessage = "正在保存记录..."
+        defer { isSaving = false }
+
+        do {
+            let imageUrl: String?
+            if let selectedPhotoData {
+                progressMessage = "正在上传照片..."
+                imageUrl = try await APIService.shared.uploadFoodRecordImage(
+                    imageData: selectedPhotoData
+                )
+            } else {
+                imageUrl = nil
+            }
+
+            progressMessage = "正在保存记录..."
+            let request = SaveFoodRecordRequest(
+                foodName: food.name,
+                calories: food.calories,
+                protein: food.protein,
+                fat: food.fat,
+                carbs: food.carbs,
+                fiber: 0,
+                servingSize: food.servingSize,
+                mealType: food.mealType ?? initialMealType.rawValue,
+                imageUrl: imageUrl,
+                recordedAt: nil
+            )
+
+            _ = try await APIService.shared.saveFoodRecord(request)
+            gamificationManager.showXpFloat(amount: 10)
+            Task { await gamificationManager.refreshStatus() }
+            Task { await gamificationManager.loadPetStatus() }
+            onSaved?(food)
+            dismiss()
+        } catch {
+            errorMessage = error.localizedDescription
+        }
+    }
+
+    private func normalizedUploadImageData(from data: Data) -> Data? {
+        guard let image = UIImage(data: data) else { return nil }
+        let maxWidth: CGFloat = 1600
+        let originalSize = image.size
+
+        guard originalSize.width > maxWidth else {
+            return image.jpegData(compressionQuality: 0.85)
+        }
+
+        let scale = maxWidth / originalSize.width
+        let newSize = CGSize(width: maxWidth, height: originalSize.height * scale)
+        let renderer = UIGraphicsImageRenderer(size: newSize)
+        let resizedImage = renderer.image { _ in
+            image.draw(in: CGRect(origin: .zero, size: newSize))
+        }
+        return resizedImage.jpegData(compressionQuality: 0.85)
+    }
 }
 
 // MARK: - RecognitionFailedView (Task 17.5)
@@ -546,7 +736,8 @@ struct RecognitionFailedView: View {
             protein: 0,
             fat: 0,
             carbs: 0,
-            servingSize: 100
+            servingSize: 100,
+            mealType: MealType.lunch.rawValue
         )
         let syntheticResult = FoodRecognitionResult(foods: [manualFood], confidence: 1.0)
         onManualEntry?(syntheticResult)
@@ -585,6 +776,17 @@ private struct FoodItemCard: View {
                     Text("\(Int(food.servingSize))g")
                         .font(.caption)
                         .foregroundColor(AppTheme.textSecondary)
+
+                    if let mealType = food.mealType,
+                       let meal = MealType(rawValue: mealType) {
+                        Text(meal.chineseDisplayName)
+                            .font(.system(size: 11, weight: .medium))
+                            .foregroundColor(AppTheme.textSecondary)
+                            .padding(.horizontal, 8)
+                            .padding(.vertical, 3)
+                            .background(AppTheme.backgroundSecondary)
+                            .clipShape(Capsule())
+                    }
 
                     // Task 17.6 — edit button
                     Button(action: { onEdit?() }) {
