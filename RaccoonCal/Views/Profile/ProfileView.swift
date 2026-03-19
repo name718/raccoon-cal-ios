@@ -82,7 +82,10 @@ struct ProfileView: View {
                         .padding(.horizontal, 16)
                         .padding(.bottom, 32)
                     }
-                    .refreshable { await loadAllData() }
+                    .refreshable {
+                        await loadAllData(showPageError: false)
+                        await loadSettlementIfNeeded(showPageError: false)
+                    }
                 }
 
                 Color.clear
@@ -131,8 +134,8 @@ struct ProfileView: View {
             message: "正在加载个人数据..."
         )
         .task {
-            await loadAllData()
-            await loadSettlementIfNeeded()
+            await loadAllData(showPageError: true)
+            await loadSettlementIfNeeded(showPageError: false)
         }
     }
 
@@ -296,10 +299,14 @@ struct ProfileView: View {
     private func activityLevelDisplayName(_ level: String) -> String {
         switch level.lowercased() {
         case "sedentary":     return "久坐（几乎不运动）"
-        case "light":         return "轻度（每周 1-3 天）"
-        case "moderate":      return "中度（每周 3-5 天）"
-        case "active":        return "高度（每周 6-7 天）"
-        case "very_active":   return "极高（体力劳动/运动员）"
+        case "light", "lightly_active":
+            return "轻度（每周 1-3 天）"
+        case "moderate", "moderately_active":
+            return "中度（每周 3-5 天）"
+        case "active", "very_active":
+            return "高度（每周 6-7 天）"
+        case "extra_active":
+            return "极高（体力劳动/运动员）"
         default:              return level
         }
     }
@@ -722,7 +729,7 @@ struct ProfileView: View {
     // MARK: - 20.10 联盟结算（任务 20.10）
 
     /// 加载结算结果，若存在未查看的结算则自动弹出
-    private func loadSettlementIfNeeded() async {
+    private func loadSettlementIfNeeded(showPageError: Bool) async {
         do {
             guard let settlement = try await APIService.shared.getLeagueSettlement() else {
                 gamificationManager.leagueSettlement = nil
@@ -736,7 +743,9 @@ struct ProfileView: View {
             }
         } catch {
             print("[ProfileView] loadSettlementIfNeeded error: \(error.localizedDescription)")
-            if errorMessage == nil { errorMessage = error.localizedDescription }
+            if showPageError, errorMessage == nil {
+                errorMessage = error.localizedDescription
+            }
         }
     }
 
@@ -846,48 +855,58 @@ struct ProfileView: View {
 
     // MARK: - Data Loading
 
-    private func loadAllData() async {
+    private func loadAllData(showPageError: Bool) async {
         isLoading = true
-        errorMessage = nil
-        async let profileTask: Void = loadProfile()
+        defer { isLoading = false }
+        if showPageError {
+            errorMessage = nil
+        }
+
+        async let profileTask: Void = loadProfile(showPageError: showPageError)
         async let gamificationTask: Void = gamificationManager.refreshStatus()
-        async let weightTask: Void = loadWeightHistory()
-        async let statsTask: Void = loadNutritionStats()
+        async let weightTask: Void = loadWeightHistory(showPageError: showPageError && weightHistory.isEmpty)
+        async let statsTask: Void = loadNutritionStats(showPageError: showPageError && nutritionStats == nil)
         _ = await (profileTask, gamificationTask, weightTask, statsTask)
-        if errorMessage == nil {
+
+        if showPageError, errorMessage == nil {
             errorMessage = gamificationManager.errorMessage
         }
-        isLoading = false
     }
 
-    private func loadProfile() async {
+    private func loadProfile(showPageError: Bool) async {
         do {
             userProfile = try await APIService.shared.getProfile()
         } catch {
             print("[ProfileView] loadProfile error: \(error.localizedDescription)")
-            if errorMessage == nil { errorMessage = error.localizedDescription }
+            if showPageError, errorMessage == nil {
+                errorMessage = error.localizedDescription
+            }
         }
     }
 
-    private func loadWeightHistory() async {
+    private func loadWeightHistory(showPageError: Bool) async {
         do {
             weightHistory = try await APIService.shared.getWeightHistory()
         } catch {
             print("[ProfileView] loadWeightHistory error: \(error.localizedDescription)")
-            if errorMessage == nil { errorMessage = error.localizedDescription }
+            if showPageError, errorMessage == nil {
+                errorMessage = error.localizedDescription
+            }
         }
     }
 
-    private func loadNutritionStats() async {
+    private func loadNutritionStats(showPageError: Bool) async {
         isLoadingStats = true
+        defer { isLoadingStats = false }
         do {
             // 获取全部时间的统计（365天），以展示累计数据
             nutritionStats = try await APIService.shared.getFoodStats(days: 365)
         } catch {
             print("[ProfileView] loadNutritionStats error: \(error.localizedDescription)")
-            if errorMessage == nil { errorMessage = error.localizedDescription }
+            if showPageError, errorMessage == nil {
+                errorMessage = error.localizedDescription
+            }
         }
-        isLoadingStats = false
     }
 }
 

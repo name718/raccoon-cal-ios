@@ -60,10 +60,10 @@ struct ProfileEditView: View {
 
     enum ActivityLevelOption: String, CaseIterable, Identifiable {
         case sedentary  = "sedentary"
-        case light      = "light"
-        case moderate   = "moderate"
-        case active     = "active"
-        case veryActive = "very_active"
+        case light      = "lightly_active"
+        case moderate   = "moderately_active"
+        case active     = "very_active"
+        case veryActive = "extra_active"
 
         var id: String { rawValue }
 
@@ -78,7 +78,20 @@ struct ProfileEditView: View {
         }
 
         static func from(_ raw: String) -> ActivityLevelOption {
-            ActivityLevelOption(rawValue: raw.lowercased()) ?? .moderate
+            switch raw.lowercased() {
+            case "sedentary":
+                return .sedentary
+            case "light", "lightly_active":
+                return .light
+            case "moderate", "moderately_active":
+                return .moderate
+            case "active", "very_active":
+                return .active
+            case "extra_active":
+                return .veryActive
+            default:
+                return .moderate
+            }
         }
     }
 
@@ -280,7 +293,7 @@ struct ProfileEditView: View {
         isSaving = true
         let updateRequest = ProfileUpdateRequest(
             nickname: nickname.trimmingCharacters(in: .whitespaces),
-            gender: nil,
+            gender: profile.gender,
             height: height,
             weight: weight,
             age: age,
