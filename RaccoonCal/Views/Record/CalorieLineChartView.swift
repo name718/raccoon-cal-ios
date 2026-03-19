@@ -13,8 +13,8 @@ struct CalorieLineChartView: View {
     /// 7 天数据点（来自 NutritionStats.dailyCalories）
     let dataPoints: [DailyCalories]
 
-    /// 每日卡路里目标（默认 2000 kcal）
-    var dailyTarget: Double = 2000
+    /// 每日卡路里目标（<= 0 代表未设置）
+    var dailyTarget: Double = 0
 
     // MARK: - Body
 
@@ -31,9 +31,15 @@ struct CalorieLineChartView: View {
     private var chartView: some View {
         VStack(alignment: .leading, spacing: 8) {
             HStack {
-                Text("目标 \(Int(dailyTarget)) kcal")
-                    .font(.system(size: 10))
-                    .foregroundColor(AppTheme.warning)
+                if dailyTarget > 0 {
+                    Text("目标 \(Int(dailyTarget)) kcal")
+                        .font(.system(size: 10))
+                        .foregroundColor(AppTheme.warning)
+                } else {
+                    Text("目标未设置")
+                        .font(.system(size: 10))
+                        .foregroundColor(AppTheme.textSecondary)
+                }
                 Spacer()
             }
             .padding(.horizontal, 16)
@@ -41,7 +47,9 @@ struct CalorieLineChartView: View {
             GeometryReader { geometry in
                 let layout = chartLayout(
                     size: geometry.size,
-                    values: dataPoints.map(\.calories) + [dailyTarget]
+                    values: dailyTarget > 0
+                        ? dataPoints.map(\.calories) + [dailyTarget]
+                        : dataPoints.map(\.calories)
                 )
 
                 ZStack {
@@ -56,15 +64,17 @@ struct CalorieLineChartView: View {
                     }
 
                     // 目标虚线
-                    Path { path in
-                        let y = yPosition(for: dailyTarget, in: layout)
-                        path.move(to: CGPoint(x: layout.leftInset, y: y))
-                        path.addLine(to: CGPoint(x: geometry.size.width - layout.rightInset, y: y))
+                    if dailyTarget > 0 {
+                        Path { path in
+                            let y = yPosition(for: dailyTarget, in: layout)
+                            path.move(to: CGPoint(x: layout.leftInset, y: y))
+                            path.addLine(to: CGPoint(x: geometry.size.width - layout.rightInset, y: y))
+                        }
+                        .stroke(
+                            AppTheme.warning.opacity(0.8),
+                            style: StrokeStyle(lineWidth: 1.5, dash: [5, 5])
+                        )
                     }
-                    .stroke(
-                        AppTheme.warning.opacity(0.8),
-                        style: StrokeStyle(lineWidth: 1.5, dash: [5, 5])
-                    )
 
                     // 折线
                     Path { path in
@@ -96,7 +106,7 @@ struct CalorieLineChartView: View {
                         let y = yPosition(for: point.calories, in: layout)
 
                         Circle()
-                            .fill(point.calories > dailyTarget ? AppTheme.warning : AppTheme.primary)
+                            .fill(dailyTarget > 0 && point.calories > dailyTarget ? AppTheme.warning : AppTheme.primary)
                             .frame(width: 8, height: 8)
                             .position(x: x, y: y)
 

@@ -19,13 +19,12 @@ struct PrivacyPolicySheet: View {
                 .fontWeight(.bold)
                 .padding(.top, 30)
             
-            // 隐私政策内容占位
             ScrollView {
                 VStack(alignment: .leading, spacing: 15) {
-                    Text("隐私政策内容")
+                    Text("隐私政策说明")
                         .font(.headline)
                     
-                    Text("这里是隐私政策的详细内容占位文本。\n\n我们重视您的隐私，会妥善保管您的个人信息。\n\n使用本应用即表示您同意我们的隐私政策和用户协议。")
+                    Text("当前版本仍处于开发阶段，正式的《隐私政策》和《用户协议》文本尚未接入。\n\n在正式版本上线前，这里会替换为完整的法律文本，并明确说明我们会收集哪些数据、这些数据的用途、保存期限以及你的相关权利。\n\n如果你现在继续登录，表示你已知晓当前页面仍为开发态提示。")
                         .font(.body)
                         .foregroundColor(.secondary)
                     
@@ -34,7 +33,6 @@ struct PrivacyPolicySheet: View {
                 .padding()
             }
             
-            // 同意并进入按钮
             Button(action: {
                 dismiss()
                 // 延迟一下让sheet完全关闭后再导航
@@ -42,7 +40,7 @@ struct PrivacyPolicySheet: View {
                     navigateToLogin = true
                 }
             }) {
-                Text("同意并进入")
+                Text("继续登录")
                     .font(.headline)
                     .foregroundColor(.white)
                     .frame(maxWidth: .infinity)

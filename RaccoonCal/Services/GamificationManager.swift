@@ -41,6 +41,20 @@ class GamificationManager: ObservableObject {
 
     private init() {}
 
+    func resetState() {
+        gamificationStatus = nil
+        petStatus = nil
+        petLevelHistory = []
+        dailyTasks = []
+        achievements = []
+        leagueInfo = nil
+        leagueSettlement = nil
+        isLoading = false
+        errorMessage = nil
+        xpFloatAmount = 0
+        isXpFloatVisible = false
+    }
+
     // MARK: - Refresh Status (Task 13.3)
 
     /// 从服务器拉取游戏化状态，并更新所有 @Published 属性

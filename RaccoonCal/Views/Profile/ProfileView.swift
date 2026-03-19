@@ -37,13 +37,13 @@ struct ProfileView: View {
     // MARK: - Computed helpers
 
     private var nickname: String {
-        userProfile?.nickname ?? userManager.currentUser?.username ?? "浣熊用户"
+        userProfile?.nickname ?? userManager.currentUser?.username ?? "未设置昵称"
     }
 
-    private var currentLevel: Int { gamificationManager.gamificationStatus?.level ?? 1 }
-    private var totalXp: Int     { gamificationManager.gamificationStatus?.totalXp ?? 0 }
+    private var currentLevel: Int? { gamificationManager.gamificationStatus?.level }
+    private var totalXp: Int?     { gamificationManager.gamificationStatus?.totalXp }
     private var levelProgress: Double { gamificationManager.gamificationStatus?.levelProgress ?? 0 }
-    private var streakDays: Int  { gamificationManager.gamificationStatus?.streakDays ?? 0 }
+    private var streakDays: Int?  { gamificationManager.gamificationStatus?.streakDays }
 
     private var unlockedCount: Int { gamificationManager.achievements.filter { $0.unlocked }.count }
     private var totalAchievements: Int { gamificationManager.achievements.count }
@@ -173,11 +173,11 @@ struct ProfileView: View {
                         .lineLimit(1)
 
                     HStack(spacing: 8) {
-                        badgeView(icon: "star.fill", text: "Lv.\(currentLevel)", color: AppTheme.primary)
+                        badgeView(icon: "star.fill", text: currentLevel.map { "Lv.\($0)" } ?? "Lv.--", color: AppTheme.primary)
                         badgeView(
                             icon: "flame.fill",
-                            text: "\(streakDays) 天",
-                            color: streakDays > 0 ? AppTheme.warning : AppTheme.textDisabled
+                            text: streakDays.map { "\($0) 天" } ?? "--",
+                            color: (streakDays ?? 0) > 0 ? AppTheme.warning : AppTheme.textDisabled
                         )
                     }
                 }
@@ -352,111 +352,123 @@ struct ProfileView: View {
         VStack(alignment: .leading, spacing: 0) {
             sectionHeader(title: "等级 & 经验值", icon: "star.circle.fill")
 
-            VStack(spacing: 14) {
-                // 等级徽章 + 总 XP
-                HStack(spacing: 12) {
-                    // 等级徽章
-                    ZStack {
-                        Circle()
-                            .fill(LinearGradient(
-                                colors: [AppTheme.primaryLight, AppTheme.primary],
-                                startPoint: .topLeading, endPoint: .bottomTrailing
-                            ))
-                            .frame(width: 60, height: 60)
-                        VStack(spacing: 1) {
-                            Image(systemName: "star.fill")
-                                .font(.system(size: 12, weight: .bold))
-                                .foregroundColor(.white)
-                            Text("Lv.\(currentLevel)")
-                                .font(.system(size: 18, weight: .bold))
-                                .foregroundColor(.white)
-                        }
-                    }
-                    .shadow(color: AppTheme.primary.opacity(0.4), radius: 6, x: 0, y: 3)
-
-                    VStack(alignment: .leading, spacing: 4) {
-                        Text("累计经验值")
-                            .font(.system(size: 12))
-                            .foregroundColor(AppTheme.textSecondary)
-                        HStack(alignment: .lastTextBaseline, spacing: 3) {
-                            Text("\(totalXp)")
-                                .font(.system(size: 24, weight: .bold))
-                                .foregroundColor(AppTheme.textPrimary)
-                            Text("XP")
-                                .font(.system(size: 13, weight: .medium))
-                                .foregroundColor(AppTheme.textSecondary)
-                        }
-                    }
-
-                    Spacer()
-
-                    // 满级标签 or 下一级提示
-                    let remaining = gamificationManager.xpToNextLevel(totalXp: totalXp)
-                    if remaining == 0 {
-                        Text("已满级")
-                            .font(.system(size: 12, weight: .semibold))
-                            .foregroundColor(AppTheme.primary)
-                            .padding(.horizontal, 10)
-                            .padding(.vertical, 4)
-                            .background(Capsule().fill(AppTheme.primary.opacity(0.12)))
-                    } else {
-                        VStack(alignment: .trailing, spacing: 2) {
-                            Text("距下一级")
-                                .font(.system(size: 11))
-                                .foregroundColor(AppTheme.textSecondary)
-                            Text("\(remaining) XP")
-                                .font(.system(size: 13, weight: .semibold))
-                                .foregroundColor(AppTheme.warning)
-                        }
-                    }
-                }
-
-                // 进度条
-                VStack(spacing: 6) {
-                    GeometryReader { geo in
-                        ZStack(alignment: .leading) {
-                            RoundedRectangle(cornerRadius: 8)
-                                .fill(AppTheme.primaryLight.opacity(0.35))
-                                .frame(height: 14)
-                            RoundedRectangle(cornerRadius: 8)
+            if let currentLevel, let totalXp {
+                VStack(spacing: 14) {
+                    // 等级徽章 + 总 XP
+                    HStack(spacing: 12) {
+                        // 等级徽章
+                        ZStack {
+                            Circle()
                                 .fill(LinearGradient(
                                     colors: [AppTheme.primaryLight, AppTheme.primary],
-                                    startPoint: .leading, endPoint: .trailing
+                                    startPoint: .topLeading, endPoint: .bottomTrailing
                                 ))
-                                .frame(width: geo.size.width * min(max(levelProgress, 0), 1.0), height: 14)
-                                .animation(.easeInOut(duration: 0.6), value: levelProgress)
+                                .frame(width: 60, height: 60)
+                            VStack(spacing: 1) {
+                                Image(systemName: "star.fill")
+                                    .font(.system(size: 12, weight: .bold))
+                                    .foregroundColor(.white)
+                                Text("Lv.\(currentLevel)")
+                                    .font(.system(size: 18, weight: .bold))
+                                    .foregroundColor(.white)
+                            }
+                        }
+                        .shadow(color: AppTheme.primary.opacity(0.4), radius: 6, x: 0, y: 3)
+
+                        VStack(alignment: .leading, spacing: 4) {
+                            Text("累计经验值")
+                                .font(.system(size: 12))
+                                .foregroundColor(AppTheme.textSecondary)
+                            HStack(alignment: .lastTextBaseline, spacing: 3) {
+                                Text("\(totalXp)")
+                                    .font(.system(size: 24, weight: .bold))
+                                    .foregroundColor(AppTheme.textPrimary)
+                                Text("XP")
+                                    .font(.system(size: 13, weight: .medium))
+                                    .foregroundColor(AppTheme.textSecondary)
+                            }
+                        }
+
+                        Spacer()
+
+                        // 满级标签 or 下一级提示
+                        let remaining = gamificationManager.xpToNextLevel(totalXp: totalXp)
+                        if remaining == 0 {
+                            Text("已满级")
+                                .font(.system(size: 12, weight: .semibold))
+                                .foregroundColor(AppTheme.primary)
+                                .padding(.horizontal, 10)
+                                .padding(.vertical, 4)
+                                .background(Capsule().fill(AppTheme.primary.opacity(0.12)))
+                        } else {
+                            VStack(alignment: .trailing, spacing: 2) {
+                                Text("距下一级")
+                                    .font(.system(size: 11))
+                                    .foregroundColor(AppTheme.textSecondary)
+                                Text("\(remaining) XP")
+                                    .font(.system(size: 13, weight: .semibold))
+                                    .foregroundColor(AppTheme.warning)
+                            }
                         }
                     }
-                    .frame(height: 14)
 
-                    // 当前等级 XP 范围
-                    let levelStart = currentLevelStartXp(level: currentLevel)
-                    let nextLevelXp = currentLevelStartXp(level: currentLevel + 1)
-                    let xpInLevel = totalXp - levelStart
-                    let xpForLevel = nextLevelXp - levelStart
-                    let remaining2 = gamificationManager.xpToNextLevel(totalXp: totalXp)
-
-                    HStack {
-                        if remaining2 == 0 {
-                            Text("MAX LEVEL")
-                                .font(.system(size: 11, weight: .semibold))
-                                .foregroundColor(AppTheme.primary)
-                        } else {
-                            Text("\(xpInLevel) / \(xpForLevel) XP")
-                                .font(.system(size: 11))
-                                .foregroundColor(AppTheme.textSecondary)
+                    // 进度条
+                    VStack(spacing: 6) {
+                        GeometryReader { geo in
+                            ZStack(alignment: .leading) {
+                                RoundedRectangle(cornerRadius: 8)
+                                    .fill(AppTheme.primaryLight.opacity(0.35))
+                                    .frame(height: 14)
+                                RoundedRectangle(cornerRadius: 8)
+                                    .fill(LinearGradient(
+                                        colors: [AppTheme.primaryLight, AppTheme.primary],
+                                        startPoint: .leading, endPoint: .trailing
+                                    ))
+                                    .frame(width: geo.size.width * min(max(levelProgress, 0), 1.0), height: 14)
+                                    .animation(.easeInOut(duration: 0.6), value: levelProgress)
+                            }
                         }
-                        Spacer()
-                        if remaining2 > 0 {
-                            Text("Lv.\(currentLevel + 1) 需 \(nextLevelXp) XP")
-                                .font(.system(size: 11))
-                                .foregroundColor(AppTheme.textDisabled)
+                        .frame(height: 14)
+
+                        // 当前等级 XP 范围
+                        let levelStart = currentLevelStartXp(level: currentLevel)
+                        let nextLevelXp = currentLevelStartXp(level: currentLevel + 1)
+                        let xpInLevel = totalXp - levelStart
+                        let xpForLevel = nextLevelXp - levelStart
+                        let remaining2 = gamificationManager.xpToNextLevel(totalXp: totalXp)
+
+                        HStack {
+                            if remaining2 == 0 {
+                                Text("MAX LEVEL")
+                                    .font(.system(size: 11, weight: .semibold))
+                                    .foregroundColor(AppTheme.primary)
+                            } else {
+                                Text("\(xpInLevel) / \(xpForLevel) XP")
+                                    .font(.system(size: 11))
+                                    .foregroundColor(AppTheme.textSecondary)
+                            }
+                            Spacer()
+                            if remaining2 > 0 {
+                                Text("Lv.\(currentLevel + 1) 需 \(nextLevelXp) XP")
+                                    .font(.system(size: 11))
+                                    .foregroundColor(AppTheme.textDisabled)
+                            }
                         }
                     }
                 }
+                .padding(.horizontal, 16)
+                .padding(.bottom, 16)
+            } else {
+                HStack(spacing: 10) {
+                    Image(systemName: "clock.arrow.circlepath")
+                        .foregroundColor(AppTheme.textDisabled)
+                    Text("等级数据同步中")
+                        .font(.system(size: 13))
+                        .foregroundColor(AppTheme.textDisabled)
+                }
+                .padding(.horizontal, 16)
+                .padding(.bottom, 16)
             }
-            .padding(.horizontal, 16)
-            .padding(.bottom, 16)
         }
         .cardBackground()
     }

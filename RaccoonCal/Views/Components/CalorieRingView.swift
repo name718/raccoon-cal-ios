@@ -65,9 +65,15 @@ struct CalorieRingView: View {
                     .font(.system(size: 28, weight: .bold, design: .rounded))
                     .foregroundColor(isOverTarget ? AppTheme.warning : AppTheme.textPrimary)
 
-                Text("/ \(Int(target)) kcal")
-                    .font(.system(size: 12, weight: .regular))
-                    .foregroundColor(AppTheme.textSecondary)
+                if target > 0 {
+                    Text("/ \(Int(target)) kcal")
+                        .font(.system(size: 12, weight: .regular))
+                        .foregroundColor(AppTheme.textSecondary)
+                } else {
+                    Text("目标未设置")
+                        .font(.system(size: 12, weight: .regular))
+                        .foregroundColor(AppTheme.textSecondary)
+                }
             }
         }
         .frame(width: size, height: size)

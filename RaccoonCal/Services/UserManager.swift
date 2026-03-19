@@ -8,6 +8,7 @@
 import Foundation
 import SwiftUI
 
+@MainActor
 class UserManager: ObservableObject {
     static let shared = UserManager()
     
@@ -41,11 +42,11 @@ class UserManager: ObservableObject {
                 await loadCurrentUser()
             }
         } else {
+            resetSessionState()
             isRestoringSession = false
         }
     }
     
-    @MainActor
     func loadCurrentUser() async {
         do {
             currentUser = try await apiService.getCurrentUser()
@@ -58,13 +59,13 @@ class UserManager: ObservableObject {
         isRestoringSession = false
     }
     
-    @MainActor
     func register(username: String, password: String, email: String?) async throws {
         let authResponse = try await apiService.register(username: username, password: password, email: email)
 
         do {
-            let profileRequest = buildInitialProfileRequest(for: authResponse.user)
-            _ = try await apiService.updateProfile(profileRequest)
+            if let profileRequest = buildInitialProfileRequest(for: authResponse.user) {
+                _ = try await apiService.updateProfile(profileRequest)
+            }
 
             currentUser = authResponse.user
             isLoggedIn = true
@@ -75,7 +76,6 @@ class UserManager: ObservableObject {
         }
     }
     
-    @MainActor
     func login(identifier: String, password: String) async throws {
         let authResponse = try await apiService.login(identifier: identifier, password: password)
         currentUser = authResponse.user
@@ -84,33 +84,28 @@ class UserManager: ObservableObject {
     
     func logout() {
         apiService.logout()
-        currentUser = nil
-        isLoggedIn = false
-        isRestoringSession = false
+        resetSessionState()
     }
 
-    private func buildInitialProfileRequest(for user: User) -> ProfileUpdateRequest {
+    private func buildInitialProfileRequest(for user: User) -> ProfileUpdateRequest? {
         if let onboardingData = OnboardingData.load() {
             return onboardingData.toProfileUpdateRequest(
                 fallbackNickname: user.username
             )
         }
 
-        return ProfileUpdateRequest(
-            nickname: user.username,
-            gender: "other",
-            height: 170,
-            weight: 60,
-            age: 25,
-            goal: "maintain",
-            activityLevel: "sedentary"
-        )
+        return nil
     }
 
-    @MainActor
     private func handleAuthenticationExpired() {
+        resetSessionState()
+    }
+
+    private func resetSessionState() {
         currentUser = nil
         isLoggedIn = false
         isRestoringSession = false
+        AppState.shared.selectedTab = 0
+        GamificationManager.shared.resetState()
     }
 }

@@ -55,32 +55,38 @@ struct HomeView: View {
 
     /// 每日卡路里目标
     private var dailyTarget: Double {
-        Double(userProfile?.dailyCalTarget ?? 2000)
+        guard let dailyCalTarget = userProfile?.dailyCalTarget else { return 0 }
+        return Double(dailyCalTarget)
     }
 
     /// 是否超标（超出目标）
     private var isOverTarget: Bool {
-        totalCalories > dailyTarget
+        guard dailyTarget > 0 else { return false }
+        return totalCalories > dailyTarget
     }
 
     /// 当前 HP
-    private var currentHp: Int {
-        gamificationManager.gamificationStatus?.currentHp ?? 5
+    private var currentHp: Int? {
+        gamificationManager.gamificationStatus?.currentHp
     }
 
     /// 当前等级
-    private var currentLevel: Int {
-        gamificationManager.gamificationStatus?.level ?? 1
+    private var currentLevel: Int? {
+        gamificationManager.gamificationStatus?.level
     }
 
     /// 连续打卡天数
-    private var streakDays: Int {
+    private var streakDays: Int? {
+        gamificationManager.gamificationStatus?.streakDays
+    }
+
+    private var streakDaysValue: Int {
         gamificationManager.gamificationStatus?.streakDays ?? 0
     }
 
     /// 昵称
     private var nickname: String {
-        userProfile?.nickname ?? userManager.currentUser?.username ?? "浣熊用户"
+        userProfile?.nickname ?? userManager.currentUser?.username ?? "未设置昵称"
     }
 
     /// 餐次分组列表（按固定顺序）
@@ -109,7 +115,7 @@ struct HomeView: View {
             calories: totalCalories,
             target: dailyTarget,
             mealCount: mealCount,
-            streakDays: streakDays
+            streakDays: streakDaysValue
         )
     }
 
@@ -203,17 +209,17 @@ struct HomeView: View {
             // Streak 火焰图标 + 天数
             HStack(spacing: 4) {
                 Image(systemName: "flame.fill")
-                    .foregroundColor(streakDays > 0 ? AppTheme.warning : AppTheme.textDisabled)
+                    .foregroundColor((streakDays ?? 0) > 0 ? AppTheme.warning : AppTheme.textDisabled)
                     .font(.system(size: 16))
-                Text("\(streakDays)")
+                Text(streakDays.map(String.init) ?? "--")
                     .font(.system(size: 15, weight: .bold))
-                    .foregroundColor(streakDays > 0 ? AppTheme.warning : AppTheme.textDisabled)
+                    .foregroundColor((streakDays ?? 0) > 0 ? AppTheme.warning : AppTheme.textDisabled)
             }
             .padding(.horizontal, 10)
             .padding(.vertical, 5)
             .background(
                 Capsule()
-                    .fill((streakDays > 0 ? AppTheme.warning : AppTheme.textDisabled).opacity(0.12))
+                    .fill((((streakDays ?? 0) > 0 ? AppTheme.warning : AppTheme.textDisabled)).opacity(0.12))
             )
 
             // 等级徽章
@@ -221,7 +227,7 @@ struct HomeView: View {
                 Image(systemName: "star.fill")
                     .foregroundColor(AppTheme.primary)
                     .font(.system(size: 14))
-                Text("Lv.\(currentLevel)")
+                Text(currentLevel.map { "Lv.\($0)" } ?? "Lv.--")
                     .font(.system(size: 14, weight: .bold))
                     .foregroundColor(AppTheme.primary)
             }
@@ -269,7 +275,13 @@ struct HomeView: View {
                 .font(.system(size: 14, weight: .medium))
                 .foregroundColor(AppTheme.textSecondary)
             Spacer()
-            HPHeartView(hp: currentHp, heartSize: 22)
+            if let currentHp {
+                HPHeartView(hp: currentHp, heartSize: 22)
+            } else {
+                Text("--")
+                    .font(.system(size: 14, weight: .semibold))
+                    .foregroundColor(AppTheme.textDisabled)
+            }
         }
         .padding(.horizontal, 16)
         .padding(.vertical, 12)

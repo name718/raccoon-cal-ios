@@ -61,7 +61,8 @@ struct RecordView: View {
 
     /// 每日卡路里目标
     private var dailyTarget: Double {
-        Double(userProfile?.dailyCalTarget ?? 2000)
+        guard let dailyCalTarget = userProfile?.dailyCalTarget else { return 0 }
+        return Double(dailyCalTarget)
     }
 
     /// 选中日期的字符串（yyyy-MM-dd）

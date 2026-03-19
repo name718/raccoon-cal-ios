@@ -63,9 +63,14 @@ struct PetView: View {
 
     // MARK: - Computed Properties
 
-    /// 当前心情（优先使用 petStatus，否则 fallback 到 .normal）
-    private var currentMood: PetMood {
-        petStatus?.mood ?? .normal
+    /// 当前心情（仅以服务端宠物状态为准）
+    private var currentMood: PetMood? {
+        petStatus?.mood
+    }
+
+    /// 占位展示用心情，不作为真实业务数据
+    private var displayMood: PetMood {
+        currentMood ?? .normal
     }
 
     /// 是否处于"思念"状态（19.8）
@@ -90,17 +95,29 @@ struct PetView: View {
 
     /// 宠物名称
     private var petName: String {
-        petStatus?.name ?? "小R"
+        petStatus?.name ?? "未同步"
     }
 
     /// 宠物等级
     private var petLevel: Int {
-        petStatus?.level ?? (gamificationManager.gamificationStatus?.level ?? 1)
+        petStatus?.level ?? 0
     }
 
     /// 饱食度 0-100
     private var satiety: Double {
         petStatus?.satiety ?? 0
+    }
+
+    private var petLevelText: String {
+        petLevel > 0 ? "Lv.\(petLevel)" : "等级未同步"
+    }
+
+    private var satietyText: String {
+        petStatus == nil ? "--" : "\(Int(satiety))%"
+    }
+
+    private var moodDisplayName: String {
+        currentMood?.displayName ?? "状态同步中"
     }
 
     /// 成长历史（按 achievedAt 升序，19.7）
@@ -174,7 +191,7 @@ struct PetView: View {
                 Circle()
                     .fill(AppTheme.primaryLight.opacity(0.4))
                     .frame(width: 88, height: 88)
-                RaccoonMoodView(mood: currentMood, size: 72)
+                RaccoonMoodView(mood: displayMood, size: 72)
             }
 
             // 名称 / 等级 / 饱食度
@@ -189,7 +206,7 @@ struct PetView: View {
                         Image(systemName: "star.fill")
                             .font(.system(size: 10))
                             .foregroundColor(AppTheme.primary)
-                        Text("Lv.\(petLevel)")
+                        Text(petLevelText)
                             .font(.system(size: 12, weight: .semibold))
                             .foregroundColor(AppTheme.primary)
                     }
@@ -199,7 +216,7 @@ struct PetView: View {
                 }
 
                 // 心情标签
-                Text(currentMood.displayName)
+                Text(moodDisplayName)
                     .font(.system(size: 12))
                     .foregroundColor(AppTheme.textSecondary)
 
@@ -215,7 +232,7 @@ struct PetView: View {
                                 .foregroundColor(AppTheme.textSecondary)
                         }
                         Spacer()
-                        Text("\(Int(satiety))%")
+                        Text(satietyText)
                             .font(.system(size: 12, weight: .semibold))
                             .foregroundColor(satiety >= 80 ? AppTheme.secondary : AppTheme.textSecondary)
                     }
@@ -262,7 +279,7 @@ struct PetView: View {
                 // 19.6 ZStack 叠加装扮图片
                 Button(action: handleRaccoonTap) {
                     ZStack {
-                        RaccoonMoodView(mood: currentMood, size: 150)
+                        RaccoonMoodView(mood: displayMood, size: 150)
 
                         // 19.6 — 衣服图层（底层）
                         if let clothKey = previewClothes,
@@ -286,7 +303,7 @@ struct PetView: View {
                     .animation(.spring(response: 0.3, dampingFraction: 0.5), value: raccoonScale)
                 }
                 .buttonStyle(.plain)
-                .disabled(isInteracting)
+                .disabled(isInteracting || petStatus == nil)
 
                 // 互动文案气泡（19.4）
                 if showInteractText {
@@ -695,12 +712,7 @@ struct PetView: View {
         } catch {
             print("[PetView] loadUnlockedOutfits error: \(error.localizedDescription)")
             if errorMessage == nil { errorMessage = error.localizedDescription }
-            // 加载失败时 fallback：将等级 1 的道具视为已解锁
-            let level = petLevel
-            let fallbackKeys = OutfitCatalog.all
-                .filter { $0.requiredLevel <= level }
-                .map { $0.id }
-            unlockedOutfitKeys = Set(fallbackKeys)
+            unlockedOutfitKeys = []
         }
         isLoadingOutfits = false
     }
@@ -756,7 +768,7 @@ struct PetView: View {
 
     private func randomInteractPhrase() -> String {
         let phrases: [String]
-        switch currentMood {
+        switch displayMood {
         case .happy:
             phrases = ["今天状态超棒！继续保持。", "你做到了，表现非常好。"]
         case .satisfied:
