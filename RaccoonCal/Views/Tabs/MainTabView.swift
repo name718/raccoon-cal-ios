@@ -8,13 +8,20 @@
 import SwiftUI
 import UIKit
 
+private enum AddEntryErrorContext {
+    case imageRecognition
+    case imageProcessing
+}
+
 struct MainTabView: View {
     @StateObject private var appState = AppState.shared
-    @State private var showPhotoPicker = false
     @State private var showCameraCapture = false
     @State private var isRecognizingImage = false
     @State private var addEntryErrorMessage: String? = nil
+    @State private var addEntryErrorTitle = "识别失败"
+    @State private var addEntryErrorContext: AddEntryErrorContext? = nil
     @State private var manualDraft: ManualFoodDraft? = nil
+    @State private var pendingRecognitionFallbackDraft: ManualFoodDraft? = nil
     @State private var loadedTabs: Set<Int> = [AppState.shared.selectedTab]
 
     private var addSheetActions: [AppBottomSheetActionItem] {
@@ -34,14 +41,6 @@ struct MainTabView: View {
                 tintColor: AppTheme.secondary
             ) {
                 showCameraCapture = true
-            },
-            AppBottomSheetActionItem(
-                title: "从相册选择",
-                subtitle: "选择已有照片识别，并把数据回填到手动填写页",
-                systemImage: "photo.on.rectangle",
-                tintColor: AppTheme.info
-            ) {
-                showPhotoPicker = true
             }
         ]
     }
@@ -66,16 +65,9 @@ struct MainTabView: View {
         .appBottomSheet(
             isPresented: $appState.showAddEntryOptions,
             title: "添加记录",
-            message: "选择一种方式开始记录，识别后会自动进入手动填写页。",
+            message: "选择手动填写或直接拍照识别，识别后会自动回填到表单。",
             actions: addSheetActions
         )
-        .sheet(isPresented: $showPhotoPicker) {
-            PhotoLibraryPicker { rawData in
-                Task {
-                    await recognizeImageAndOpenForm(rawData)
-                }
-            }
-        }
         .fullScreenCover(isPresented: $showCameraCapture) {
             AddRecordCameraCaptureView(
                 onClose: {
@@ -101,8 +93,8 @@ struct MainTabView: View {
         }
         .delayedLoadingOverlay(
             isLoading: isRecognizingImage,
-            message: "正在识别图片，马上带入手动填写页...",
-            delayNanoseconds: 200_000_000
+            message: "正在分析图片并整理为可编辑表单...",
+            delayNanoseconds: 450_000_000
         )
         .appDialog(
             isPresented: Binding(
@@ -110,14 +102,30 @@ struct MainTabView: View {
                 set: { newValue in
                     if !newValue {
                         addEntryErrorMessage = nil
+                        addEntryErrorContext = nil
                     }
                 }
             ),
-            title: "识别失败",
+            title: addEntryErrorTitle,
             message: addEntryErrorMessage ?? "请稍后重试",
             tone: .error,
-            primaryAction: AppDialogAction("确定") {
+            primaryAction: AppDialogAction(pendingRecognitionFallbackDraft == nil ? "重新拍照" : "继续手动填写") {
+                if let fallback = pendingRecognitionFallbackDraft {
+                    manualDraft = fallback
+                } else {
+                    showCameraCapture = true
+                }
                 addEntryErrorMessage = nil
+                pendingRecognitionFallbackDraft = nil
+                addEntryErrorContext = nil
+            },
+            secondaryAction: AppDialogAction(pendingRecognitionFallbackDraft == nil ? "稍后再试" : "重新拍照") {
+                if pendingRecognitionFallbackDraft != nil {
+                    showCameraCapture = true
+                }
+                addEntryErrorMessage = nil
+                pendingRecognitionFallbackDraft = nil
+                addEntryErrorContext = nil
             }
         )
     }
@@ -158,10 +166,13 @@ struct MainTabView: View {
     private func recognizeImageAndOpenForm(_ rawData: Data) async {
         isRecognizingImage = true
         addEntryErrorMessage = nil
+        addEntryErrorContext = nil
         defer { isRecognizingImage = false }
 
         guard let imageData = resizedJpegData(from: rawData, maxWidth: 800, compressionQuality: 0.8) else {
-            addEntryErrorMessage = "图片处理失败，请重新选择"
+            addEntryErrorTitle = "图片处理失败"
+            addEntryErrorContext = .imageProcessing
+            addEntryErrorMessage = "这张照片暂时无法处理，请重新拍一张，或稍后再试。"
             return
         }
 
@@ -169,7 +180,10 @@ struct MainTabView: View {
             let result = try await APIService.shared.recognizeFood(imageData: imageData)
             manualDraft = ManualFoodDraft.fromRecognition(result, photoData: imageData)
         } catch {
-            addEntryErrorMessage = error.localizedDescription
+            addEntryErrorTitle = "识别暂时不可用"
+            addEntryErrorContext = .imageRecognition
+            pendingRecognitionFallbackDraft = ManualFoodDraft.blank().copy(photoData: imageData)
+            addEntryErrorMessage = "图片已经拍好，但暂时无法完成识别。你可以继续手动填写，稍后再试识别。\n\n\(error.localizedDescription)"
         }
     }
 
@@ -275,7 +289,7 @@ struct MainTabView: View {
             }
             .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .bottom)
         }
-        .frame(height: 70)
+        .frame(height: 82)
         .ignoresSafeArea(.keyboard)
     }
 

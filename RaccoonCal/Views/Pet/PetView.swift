@@ -95,7 +95,7 @@ struct PetView: View {
 
     /// 宠物名称
     private var petName: String {
-        petStatus?.name ?? "未同步"
+        petStatus?.name ?? "浣熊伙伴"
     }
 
     /// 宠物等级
@@ -109,15 +109,23 @@ struct PetView: View {
     }
 
     private var petLevelText: String {
-        petLevel > 0 ? "Lv.\(petLevel)" : "等级未同步"
+        petLevel > 0 ? "Lv.\(petLevel)" : "等级同步中"
     }
 
     private var satietyText: String {
-        petStatus == nil ? "--" : "\(Int(satiety))%"
+        petStatus == nil ? "同步中" : "\(Int(satiety))%"
     }
 
     private var moodDisplayName: String {
         currentMood?.displayName ?? "状态同步中"
+    }
+    
+    private var unlockedOutfitCount: Int {
+        unlockedOutfitKeys.count
+    }
+    
+    private var totalOutfitCount: Int {
+        OutfitCatalog.all.count
     }
 
     /// 成长历史（按 achievedAt 升序，19.7）
@@ -155,6 +163,7 @@ struct PetView: View {
                     }
                     .padding(.horizontal, 16)
                     .padding(.bottom, 32)
+                    .appMainTabScrollableContent()
                 }
                 .refreshable {
                     await loadPetData()
@@ -185,101 +194,124 @@ struct PetView: View {
     // MARK: - 19.2 宠物信息区
 
     private var petInfoSection: some View {
-        HStack(spacing: 16) {
-            // 浣熊外观（静态图片，根据心情切换）
-            ZStack {
-                Circle()
-                    .fill(AppTheme.primaryLight.opacity(0.4))
-                    .frame(width: 88, height: 88)
-                RaccoonMoodView(mood: displayMood, size: 72)
-            }
+        VStack(alignment: .leading, spacing: 14) {
+            petSectionHeader(
+                title: "我的浣熊",
+                icon: "pawprint.fill",
+                trailingText: petStatus == nil ? "同步中" : moodDisplayName
+            )
 
-            // 名称 / 等级 / 饱食度
-            VStack(alignment: .leading, spacing: 8) {
-                // 名称 + 等级徽章
-                HStack(spacing: 8) {
-                    Text(petName)
-                        .font(.system(size: 18, weight: .bold))
-                        .foregroundColor(AppTheme.textPrimary)
+            HStack(spacing: 16) {
+                ZStack {
+                    Circle()
+                        .fill(AppTheme.primaryLight.opacity(0.4))
+                        .frame(width: 88, height: 88)
 
-                    HStack(spacing: 3) {
-                        Image(systemName: "star.fill")
-                            .font(.system(size: 10))
-                            .foregroundColor(AppTheme.primary)
-                        Text(petLevelText)
-                            .font(.system(size: 12, weight: .semibold))
-                            .foregroundColor(AppTheme.primary)
+                    if petStatus == nil {
+                        Image("RaccoonLoading")
+                            .resizable()
+                            .scaledToFit()
+                            .frame(width: 72, height: 72)
+                    } else {
+                        RaccoonMoodView(mood: displayMood, size: 72)
                     }
-                    .padding(.horizontal, 7)
-                    .padding(.vertical, 3)
-                    .background(Capsule().fill(AppTheme.primary.opacity(0.12)))
                 }
 
-                // 心情标签
-                Text(moodDisplayName)
-                    .font(.system(size: 12))
-                    .foregroundColor(AppTheme.textSecondary)
+                VStack(alignment: .leading, spacing: 8) {
+                    HStack(spacing: 8) {
+                        Text(petName)
+                            .font(.system(size: 18, weight: .bold))
+                            .foregroundColor(AppTheme.textPrimary)
 
-                // 饱食度进度条
-                VStack(alignment: .leading, spacing: 3) {
-                    HStack {
                         HStack(spacing: 3) {
-                            Image(systemName: "fork.knife")
+                            Image(systemName: "star.fill")
                                 .font(.system(size: 10))
-                                .foregroundColor(AppTheme.secondary)
-                            Text("饱食度")
-                                .font(.system(size: 12))
-                                .foregroundColor(AppTheme.textSecondary)
+                                .foregroundColor(AppTheme.primary)
+                            Text(petLevelText)
+                                .font(.system(size: 12, weight: .semibold))
+                                .foregroundColor(AppTheme.primary)
                         }
-                        Spacer()
-                        Text(satietyText)
-                            .font(.system(size: 12, weight: .semibold))
-                            .foregroundColor(satiety >= 80 ? AppTheme.secondary : AppTheme.textSecondary)
+                        .padding(.horizontal, 7)
+                        .padding(.vertical, 3)
+                        .background(Capsule().fill(AppTheme.primary.opacity(0.12)))
                     }
 
-                    GeometryReader { geo in
-                        ZStack(alignment: .leading) {
-                            RoundedRectangle(cornerRadius: 4)
-                                .fill(AppTheme.secondary.opacity(0.15))
-                                .frame(height: 8)
-                            RoundedRectangle(cornerRadius: 4)
-                                .fill(
-                                    LinearGradient(
-                                        colors: [AppTheme.secondaryLight, AppTheme.secondary],
-                                        startPoint: .leading,
-                                        endPoint: .trailing
-                                    )
+                    Text(petStatus == nil ? "正在同步浣熊状态和等级信息" : "今天继续陪它一起养成稳定记录习惯")
+                        .font(.system(size: 12, weight: .medium))
+                        .foregroundColor(AppTheme.textSecondary)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
+                .frame(maxWidth: .infinity, alignment: .leading)
+            }
+
+            VStack(alignment: .leading, spacing: 8) {
+                HStack {
+                    Text("饱食度")
+                        .font(.system(size: 12, weight: .semibold))
+                        .foregroundColor(AppTheme.textSecondary)
+                    Spacer()
+                    Text(satietyText)
+                        .font(.system(size: 12, weight: .semibold))
+                        .foregroundColor(satiety >= 80 ? AppTheme.secondary : AppTheme.textSecondary)
+                }
+
+                GeometryReader { geo in
+                    ZStack(alignment: .leading) {
+                        RoundedRectangle(cornerRadius: 6, style: .continuous)
+                            .fill(AppTheme.secondary.opacity(0.15))
+                            .frame(height: 10)
+                        RoundedRectangle(cornerRadius: 6, style: .continuous)
+                            .fill(
+                                LinearGradient(
+                                    colors: [AppTheme.secondaryLight, AppTheme.secondary],
+                                    startPoint: .leading,
+                                    endPoint: .trailing
                                 )
-                                .frame(width: geo.size.width * min(satiety / 100, 1.0), height: 8)
-                                .animation(.easeInOut(duration: 0.4), value: satiety)
-                        }
+                            )
+                            .frame(width: geo.size.width * min(satiety / 100, 1.0), height: 10)
+                            .animation(.easeInOut(duration: 0.4), value: satiety)
                     }
-                    .frame(height: 8)
+                }
+                .frame(height: 10)
+
+                HStack(spacing: 10) {
+                    petMiniBadge(icon: "sparkles", text: moodDisplayName, tint: AppTheme.primary)
+                    petMiniBadge(icon: "tshirt.fill", text: "已解锁 \(unlockedOutfitCount)/\(totalOutfitCount)", tint: AppTheme.secondary)
                 }
             }
-            .frame(maxWidth: .infinity, alignment: .leading)
         }
         .padding(16)
-        .background(
-            RoundedRectangle(cornerRadius: 16)
-                .fill(Color.white.opacity(0.7))
-        )
+        .petCardBackground()
     }
 
     // MARK: - 19.3 + 19.4 浣熊心情 & 互动区
 
     private var raccoonInteractSection: some View {
         ZStack(alignment: .top) {
-            RoundedRectangle(cornerRadius: 16)
-                .fill(Color.white.opacity(0.7))
+            RoundedRectangle(cornerRadius: 20, style: .continuous)
+                .fill(Color.white.opacity(0.78))
+                .overlay(
+                    RoundedRectangle(cornerRadius: 20, style: .continuous)
+                        .stroke(Color.white.opacity(0.92), lineWidth: 1)
+                )
 
             VStack(spacing: 12) {
-                // 19.3 RaccoonMoodView
-                // 19.4 点击触发互动
-                // 19.6 ZStack 叠加装扮图片
+                petSectionHeader(
+                    title: "互动陪伴",
+                    icon: "hand.tap.fill",
+                    trailingText: petStatus == nil ? "等待同步" : "点击互动"
+                )
+
                 Button(action: handleRaccoonTap) {
                     ZStack {
-                        RaccoonMoodView(mood: displayMood, size: 150)
+                        if petStatus == nil {
+                            Image("RaccoonLoading")
+                                .resizable()
+                                .scaledToFit()
+                                .frame(width: 150, height: 150)
+                        } else {
+                            RaccoonMoodView(mood: displayMood, size: 150)
+                        }
 
                         // 19.6 — 衣服图层（底层）
                         if let clothKey = previewClothes,
@@ -305,6 +337,12 @@ struct PetView: View {
                 .buttonStyle(.plain)
                 .disabled(isInteracting || petStatus == nil)
 
+                Text(petStatus == nil ? "正在加载浣熊状态，稍后就能互动啦。" : "点一下浣熊，领取今天的互动反馈。")
+                    .font(.system(size: 13, weight: .medium))
+                    .foregroundColor(AppTheme.textSecondary)
+                    .multilineTextAlignment(.center)
+                    .padding(.horizontal, 12)
+
                 // 互动文案气泡（19.4）
                 if showInteractText {
                     Text(interactText)
@@ -320,20 +358,13 @@ struct PetView: View {
                         .transition(.opacity.combined(with: .scale(scale: 0.9)))
                 }
 
-                // 19.6 — 保存失败提示
-                if let error = outfitSaveError {
-                    Text(error)
-                        .font(.system(size: 12))
-                        .foregroundColor(.red)
-                        .multilineTextAlignment(.center)
-                        .padding(.horizontal, 16)
-                        .transition(.opacity)
-                }
             }
-            .padding(.vertical, 20)
+            .padding(.top, 14)
+            .padding(.bottom, 20)
             .padding(.horizontal, 16)
         }
         .frame(maxWidth: .infinity)
+        .shadow(color: Color.black.opacity(0.05), radius: 18, x: 0, y: 8)
     }
 
     // MARK: - 19.8 思念状态横幅
@@ -374,12 +405,26 @@ struct PetView: View {
 
     private var outfitSection: some View {
         VStack(spacing: 0) {
-            HStack {
-                Text("装扮")
-                    .font(.system(size: 15, weight: .semibold))
-                    .foregroundColor(AppTheme.textPrimary)
+            HStack(alignment: .top) {
+                VStack(alignment: .leading, spacing: 4) {
+                    HStack(spacing: 10) {
+                        Image(systemName: "tshirt.fill")
+                            .font(.system(size: 15, weight: .semibold))
+                            .foregroundColor(AppTheme.primary)
+                        Text("装扮")
+                            .font(.system(size: 15, weight: .semibold))
+                            .foregroundColor(AppTheme.textPrimary)
+                    }
+
+                    Text("已解锁 \(unlockedOutfitCount)/\(totalOutfitCount)")
+                        .font(.system(size: 12, weight: .medium))
+                        .foregroundColor(AppTheme.textSecondary)
+                }
+                .padding(.leading, 16)
+                .padding(.top, 14)
+
                 Spacer()
-                // 19.6 — 保存按钮（仅当预览与已保存状态不同时显示）
+
                 if hasUnsavedOutfitChanges {
                     Button(action: { Task { await saveOutfit() } }) {
                         HStack(spacing: 4) {
@@ -395,15 +440,28 @@ struct PetView: View {
                         }
                         .foregroundColor(AppTheme.primary)
                         .padding(.horizontal, 10)
-                        .padding(.vertical, 5)
+                        .padding(.vertical, 7)
                         .background(Capsule().fill(AppTheme.primary.opacity(0.12)))
                     }
                     .disabled(isSavingOutfit)
+                    .padding(.trailing, 16)
+                    .padding(.top, 14)
                 }
             }
-            .padding(.horizontal, 16)
-            .padding(.top, 14)
-            .padding(.bottom, 10)
+
+            Text("可以先预览再保存，已解锁装扮会按等级逐步开放。")
+                .font(.system(size: 12, weight: .medium))
+                .foregroundColor(AppTheme.textSecondary)
+                .padding(.horizontal, 16)
+                .padding(.bottom, 12)
+
+            if let error = outfitSaveError {
+                Text(error)
+                    .font(.system(size: 12, weight: .medium))
+                    .foregroundColor(AppTheme.error)
+                    .padding(.horizontal, 16)
+                    .padding(.bottom, 12)
+            }
 
             // 19.5 三槽位 Tab（帽子/衣服/配件）
             Picker("装扮槽位", selection: $selectedOutfitSlot) {
@@ -424,10 +482,7 @@ struct PetView: View {
 
             Spacer(minLength: 14)
         }
-        .background(
-            RoundedRectangle(cornerRadius: 16)
-                .fill(Color.white.opacity(0.7))
-        )
+        .petCardBackground()
     }
 
     /// 当前槽位对应的已选 key
@@ -541,12 +596,11 @@ struct PetView: View {
 
     private var levelHistorySection: some View {
         VStack(alignment: .leading, spacing: 0) {
-            Text("成长历史")
-                .font(.system(size: 15, weight: .semibold))
-                .foregroundColor(AppTheme.textPrimary)
-                .padding(.horizontal, 16)
-                .padding(.top, 14)
-                .padding(.bottom, 10)
+            petSectionHeader(
+                title: "成长历史",
+                icon: "clock.arrow.circlepath",
+                trailingText: sortedLevelHistory.isEmpty ? "等待升级" : "共 \(sortedLevelHistory.count) 条"
+            )
 
             if sortedLevelHistory.isEmpty {
                 HStack {
@@ -574,10 +628,7 @@ struct PetView: View {
             Spacer(minLength: 14)
         }
         .frame(maxWidth: .infinity, alignment: .leading)
-        .background(
-            RoundedRectangle(cornerRadius: 16)
-                .fill(Color.white.opacity(0.7))
-        )
+        .petCardBackground()
     }
 
     private func levelHistoryRow(event: PetLevelEvent, isLast: Bool) -> some View {
@@ -792,6 +843,62 @@ struct PetView: View {
             "今天的互动已经收到了，明天再来。"
         ]
         return phrases.randomElement() ?? "今天已经互动过啦，明天再来。"
+    }
+}
+
+private extension PetView {
+    func petSectionHeader(title: String, icon: String, trailingText: String? = nil) -> some View {
+        HStack(spacing: 10) {
+            Image(systemName: icon)
+                .font(.system(size: 15, weight: .semibold))
+                .foregroundColor(AppTheme.primary)
+
+            Text(title)
+                .font(.system(size: 15, weight: .semibold))
+                .foregroundColor(AppTheme.textPrimary)
+
+            Spacer()
+
+            if let trailingText {
+                Text(trailingText)
+                    .font(.system(size: 12, weight: .medium))
+                    .foregroundColor(AppTheme.textSecondary)
+            }
+        }
+        .padding(.horizontal, 16)
+        .padding(.top, 14)
+        .padding(.bottom, 8)
+    }
+
+    func petMiniBadge(icon: String, text: String, tint: Color) -> some View {
+        HStack(spacing: 5) {
+            Image(systemName: icon)
+                .font(.system(size: 11, weight: .semibold))
+            Text(text)
+                .font(.system(size: 11, weight: .semibold))
+                .lineLimit(1)
+        }
+        .foregroundColor(tint)
+        .padding(.horizontal, 8)
+        .padding(.vertical, 5)
+        .background(
+            Capsule(style: .continuous)
+                .fill(tint.opacity(0.10))
+        )
+    }
+}
+
+private extension View {
+    func petCardBackground() -> some View {
+        self.background(
+            RoundedRectangle(cornerRadius: 20, style: .continuous)
+                .fill(Color.white.opacity(0.78))
+                .overlay(
+                    RoundedRectangle(cornerRadius: 20, style: .continuous)
+                        .stroke(Color.white.opacity(0.92), lineWidth: 1)
+                )
+                .shadow(color: Color.black.opacity(0.05), radius: 18, x: 0, y: 8)
+        )
     }
 }
 

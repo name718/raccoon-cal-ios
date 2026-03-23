@@ -88,6 +88,29 @@ struct HomeView: View {
     private var nickname: String {
         userProfile?.nickname ?? userManager.currentUser?.username ?? "未设置昵称"
     }
+    
+    private var recordedMealCount: Int {
+        mealGroups.filter { !$0.records.isEmpty }.count
+    }
+    
+    private var calorieCompletionRatio: Double {
+        guard dailyTarget > 0 else { return 0 }
+        return min(totalCalories / dailyTarget, 1.0)
+    }
+    
+    private var calorieStatusText: String {
+        guard dailyTarget > 0 else { return "先完善资料，生成每日目标" }
+        if isOverTarget {
+            return "今天已超出目标，下一餐稍微轻一点就好"
+        }
+        if totalCalories == 0 {
+            return "今天还没开始记录，先记下第一餐吧"
+        }
+        if calorieCompletionRatio >= 0.9 {
+            return "已经接近目标，继续稳稳收尾"
+        }
+        return "今天已记录 \(recordedMealCount) 餐，继续保持节奏"
+    }
 
     /// 餐次分组列表（按固定顺序）
     private var mealGroups: [MealGroup] {
@@ -155,6 +178,7 @@ struct HomeView: View {
                     }
                     .padding(.horizontal, 16)
                     .padding(.bottom, 24)
+                    .appMainTabScrollableContent()
                 }
                 .refreshable {
                     await loadData()
@@ -197,55 +221,64 @@ struct HomeView: View {
     // MARK: - 16.2 顶部信息栏
 
     private var topInfoBar: some View {
-        HStack(spacing: 12) {
-            // 昵称
-            Text(nickname)
-                .font(.system(size: 17, weight: .semibold))
-                .foregroundColor(AppTheme.textPrimary)
-                .lineLimit(1)
+        VStack(alignment: .leading, spacing: 14) {
+            HStack(alignment: .top, spacing: 12) {
+                VStack(alignment: .leading, spacing: 6) {
+                    Text("你好，\(nickname)")
+                        .font(.system(size: 22, weight: .bold))
+                        .foregroundColor(AppTheme.textPrimary)
+                        .lineLimit(1)
 
-            Spacer()
+                    Text(calorieStatusText)
+                        .font(.system(size: 13, weight: .medium))
+                        .foregroundColor(AppTheme.textSecondary)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
 
-            // Streak 火焰图标 + 天数
-            HStack(spacing: 4) {
-                Image(systemName: "flame.fill")
-                    .foregroundColor((streakDays ?? 0) > 0 ? AppTheme.warning : AppTheme.textDisabled)
-                    .font(.system(size: 16))
-                Text(streakDays.map(String.init) ?? "--")
-                    .font(.system(size: 15, weight: .bold))
-                    .foregroundColor((streakDays ?? 0) > 0 ? AppTheme.warning : AppTheme.textDisabled)
+                Spacer(minLength: 8)
+
+                Image("RaccoonGreeting")
+                    .resizable()
+                    .scaledToFit()
+                    .frame(width: 56, height: 56)
             }
-            .padding(.horizontal, 10)
-            .padding(.vertical, 5)
-            .background(
-                Capsule()
-                    .fill((((streakDays ?? 0) > 0 ? AppTheme.warning : AppTheme.textDisabled)).opacity(0.12))
-            )
 
-            // 等级徽章
-            HStack(spacing: 4) {
-                Image(systemName: "star.fill")
-                    .foregroundColor(AppTheme.primary)
-                    .font(.system(size: 14))
-                Text(currentLevel.map { "Lv.\($0)" } ?? "Lv.--")
-                    .font(.system(size: 14, weight: .bold))
-                    .foregroundColor(AppTheme.primary)
+            HStack(spacing: 10) {
+                topInfoBadge(
+                    icon: "flame.fill",
+                    text: streakDays.map { "\($0) 天连续" } ?? "待开始",
+                    tint: (streakDays ?? 0) > 0 ? AppTheme.warning : AppTheme.textDisabled
+                )
+
+                topInfoBadge(
+                    icon: "star.fill",
+                    text: currentLevel.map { "Lv.\($0)" } ?? "等级同步中",
+                    tint: AppTheme.primary
+                )
+
+                if dailyTarget > 0 {
+                    topInfoBadge(
+                        icon: "fork.knife.circle.fill",
+                        text: "\(Int(dailyTarget)) kcal 目标",
+                        tint: AppTheme.secondary
+                    )
+                }
             }
-            .padding(.horizontal, 10)
-            .padding(.vertical, 5)
-            .background(
-                Capsule()
-                    .fill(AppTheme.primary.opacity(0.12))
-            )
         }
-        .padding(.horizontal, 4)
-        .padding(.top, 8)
+        .padding(18)
+        .homeCardBackground()
     }
 
     // MARK: - 16.3 卡路里环形进度
 
     private var calorieRingSection: some View {
-        VStack(spacing: 8) {
+        VStack(spacing: 14) {
+            homeSectionHeader(
+                title: "今日热量",
+                icon: "flame.fill",
+                trailingText: dailyTarget > 0 ? "\(Int(totalCalories))/\(Int(dailyTarget)) kcal" : "等待目标"
+            )
+
             CalorieRingView(
                 consumed: totalCalories,
                 target: dailyTarget,
@@ -253,42 +286,55 @@ struct HomeView: View {
                 size: 180
             )
 
-            if isOverTarget {
-                Text("超出 \(Int(totalCalories - dailyTarget)) kcal")
-                    .font(.system(size: 13, weight: .medium))
-                    .foregroundColor(AppTheme.warning)
+            HStack(spacing: 8) {
+                miniStatusBadge(
+                    text: recordedMealCount > 0 ? "已记录 \(recordedMealCount) 餐" : "今日待记录",
+                    tint: recordedMealCount > 0 ? AppTheme.primary : AppTheme.textDisabled
+                )
+
+                if isOverTarget {
+                    miniStatusBadge(text: "超出 \(Int(totalCalories - dailyTarget)) kcal", tint: AppTheme.warning)
+                } else if dailyTarget > 0 {
+                    miniStatusBadge(text: "剩余 \(max(0, Int(dailyTarget - totalCalories))) kcal", tint: AppTheme.secondary)
+                }
             }
+            .padding(.bottom, 16)
         }
         .frame(maxWidth: .infinity)
-        .padding(.vertical, 16)
-        .background(
-            RoundedRectangle(cornerRadius: 16)
-                .fill(Color.white.opacity(0.7))
-        )
+        .homeCardBackground()
     }
 
     // MARK: - 16.4 生命值
 
     private var hpSection: some View {
-        HStack {
-            Text("生命值")
-                .font(.system(size: 14, weight: .medium))
-                .foregroundColor(AppTheme.textSecondary)
-            Spacer()
-            if let currentHp {
-                HPHeartView(hp: currentHp, heartSize: 22)
-            } else {
-                Text("--")
-                    .font(.system(size: 14, weight: .semibold))
-                    .foregroundColor(AppTheme.textDisabled)
+        VStack(spacing: 12) {
+            homeSectionHeader(title: "生命值", icon: "heart.fill")
+
+            HStack {
+                VStack(alignment: .leading, spacing: 4) {
+                    Text("今日状态")
+                        .font(.system(size: 12, weight: .semibold))
+                        .foregroundColor(AppTheme.textSecondary)
+
+                    Text(currentHp.map { "\($0) / 5" } ?? "--")
+                        .font(.system(size: 18, weight: .bold))
+                        .foregroundColor(AppTheme.textPrimary)
+                }
+
+                Spacer()
+
+                if let currentHp {
+                    HPHeartView(hp: currentHp, heartSize: 22)
+                } else {
+                    Text("--")
+                        .font(.system(size: 14, weight: .semibold))
+                        .foregroundColor(AppTheme.textDisabled)
+                }
             }
+            .padding(.horizontal, 16)
+            .padding(.bottom, 16)
         }
-        .padding(.horizontal, 16)
-        .padding(.vertical, 12)
-        .background(
-            RoundedRectangle(cornerRadius: 12)
-                .fill(Color.white.opacity(0.7))
-        )
+        .homeCardBackground()
     }
 
     // MARK: - 16.9 超标提示横幅
@@ -318,10 +364,16 @@ struct HomeView: View {
 
     private var raccoonSection: some View {
         ZStack(alignment: .top) {
-            RoundedRectangle(cornerRadius: 16)
-                .fill(Color.white.opacity(0.7))
+            RoundedRectangle(cornerRadius: 20, style: .continuous)
+                .fill(Color.white.opacity(0.78))
+                .overlay(
+                    RoundedRectangle(cornerRadius: 20, style: .continuous)
+                        .stroke(Color.white.opacity(0.92), lineWidth: 1)
+                )
 
             VStack(spacing: 12) {
+                homeSectionHeader(title: "浣熊状态", icon: "pawprint.fill")
+
                 // 浣熊图片（点击触发互动）
                 Button(action: handleRaccoonTap) {
                     RaccoonMoodView(mood: petMood, size: 140)
@@ -346,31 +398,26 @@ struct HomeView: View {
                         .transition(.opacity.combined(with: .scale(scale: 0.9)))
                 }
             }
-            .padding(.vertical, 20)
+            .padding(.top, 14)
+            .padding(.bottom, 20)
             .padding(.horizontal, 16)
         }
         .frame(maxWidth: .infinity)
+        .shadow(color: Color.black.opacity(0.05), radius: 18, x: 0, y: 8)
     }
 
     // MARK: - 16.5 三餐 + 加餐小计
 
     private var mealSummarySection: some View {
         VStack(spacing: 0) {
-            HStack {
-                Text("今日饮食")
-                    .font(.system(size: 15, weight: .semibold))
-                    .foregroundColor(AppTheme.textPrimary)
-                Spacer()
-                // 跳转记录页入口
-                Button(action: { appState.selectedTab = 1 }) {
-                    Text("查看全部")
-                        .font(.system(size: 13))
-                        .foregroundColor(AppTheme.primary)
-                }
+            homeSectionHeader(
+                title: "今日饮食",
+                icon: "fork.knife",
+                trailingText: "已记录 \(mealGroups.filter { !$0.records.isEmpty }.count) 餐",
+                actionTitle: "查看全部"
+            ) {
+                appState.selectedTab = 1
             }
-            .padding(.horizontal, 16)
-            .padding(.top, 14)
-            .padding(.bottom, 8)
 
             Divider()
                 .padding(.horizontal, 16)
@@ -390,10 +437,7 @@ struct HomeView: View {
 
             Spacer(minLength: 14)
         }
-        .background(
-            RoundedRectangle(cornerRadius: 16)
-                .fill(Color.white.opacity(0.7))
-        )
+        .homeCardBackground()
     }
 
     private func mealRow(mealType: MealType, group: MealGroup?) -> some View {
@@ -434,26 +478,35 @@ struct HomeView: View {
                     isTasksExpanded.toggle()
                 }
             }) {
-                HStack(spacing: 10) {
-                    Image(systemName: "checkmark.circle.fill")
-                        .font(.system(size: 18))
-                        .foregroundColor(completedTaskCount == totalTaskCount && totalTaskCount > 0
-                            ? AppTheme.success : AppTheme.primary)
+                VStack(spacing: 10) {
+                    HStack(spacing: 10) {
+                        Image(systemName: "checkmark.circle.fill")
+                            .font(.system(size: 18))
+                            .foregroundColor(completedTaskCount == totalTaskCount && totalTaskCount > 0
+                                ? AppTheme.success : AppTheme.primary)
 
-                    Text("每日任务")
-                        .font(.system(size: 15, weight: .semibold))
-                        .foregroundColor(AppTheme.textPrimary)
+                        Text("每日任务")
+                            .font(.system(size: 15, weight: .semibold))
+                            .foregroundColor(AppTheme.textPrimary)
 
-                    Spacer()
+                        Spacer()
 
-                    // 进度文字
-                    Text("\(completedTaskCount)/\(totalTaskCount) 完成")
-                        .font(.system(size: 13, weight: .medium))
-                        .foregroundColor(AppTheme.textSecondary)
+                        Text("\(completedTaskCount)/\(totalTaskCount) 完成")
+                            .font(.system(size: 13, weight: .medium))
+                            .foregroundColor(AppTheme.textSecondary)
 
-                    Image(systemName: isTasksExpanded ? "chevron.up" : "chevron.down")
-                        .font(.system(size: 12))
-                        .foregroundColor(AppTheme.textDisabled)
+                        Image(systemName: isTasksExpanded ? "chevron.up" : "chevron.down")
+                            .font(.system(size: 12))
+                            .foregroundColor(AppTheme.textDisabled)
+                    }
+
+                    HStack(spacing: 8) {
+                        miniStatusBadge(text: completedTaskCount == totalTaskCount && totalTaskCount > 0 ? "今日已完成" : "继续冲刺", tint: completedTaskCount == totalTaskCount && totalTaskCount > 0 ? AppTheme.success : AppTheme.primary)
+                        if totalTaskCount > 0 {
+                            miniStatusBadge(text: "剩余 \(max(0, totalTaskCount - completedTaskCount)) 项", tint: AppTheme.info)
+                        }
+                        Spacer()
+                    }
                 }
                 .padding(.horizontal, 16)
                 .padding(.vertical, 14)
@@ -504,10 +557,7 @@ struct HomeView: View {
 
             Spacer(minLength: 14)
         }
-        .background(
-            RoundedRectangle(cornerRadius: 16)
-                .fill(Color.white.opacity(0.7))
-        )
+        .homeCardBackground()
     }
 
     private func taskRow(task: DailyTask) -> some View {
@@ -649,6 +699,89 @@ struct HomeView: View {
             phrases = ["好久不见，欢迎回来！", "回来了！快记录今天的饮食吧。", "欢迎回来，一起继续健康之旅。"]
         }
         return phrases.randomElement() ?? "加油，继续保持记录节奏。"
+    }
+}
+
+private extension HomeView {
+    func topInfoBadge(icon: String, text: String, tint: Color) -> some View {
+        HStack(spacing: 5) {
+            Image(systemName: icon)
+                .font(.system(size: 12, weight: .semibold))
+            Text(text)
+                .font(.system(size: 12, weight: .semibold))
+                .lineLimit(1)
+        }
+        .foregroundColor(tint)
+        .padding(.horizontal, 10)
+        .padding(.vertical, 7)
+        .background(
+            Capsule(style: .continuous)
+                .fill(tint.opacity(0.12))
+        )
+    }
+
+    func homeSectionHeader(
+        title: String,
+        icon: String,
+        trailingText: String? = nil,
+        actionTitle: String? = nil,
+        action: (() -> Void)? = nil
+    ) -> some View {
+        HStack(spacing: 10) {
+            Image(systemName: icon)
+                .font(.system(size: 15, weight: .semibold))
+                .foregroundColor(AppTheme.primary)
+
+            Text(title)
+                .font(.system(size: 15, weight: .semibold))
+                .foregroundColor(AppTheme.textPrimary)
+
+            Spacer()
+
+            if let trailingText {
+                Text(trailingText)
+                    .font(.system(size: 12, weight: .medium))
+                    .foregroundColor(AppTheme.textSecondary)
+            }
+
+            if let actionTitle, let action {
+                Button(action: action) {
+                    Text(actionTitle)
+                        .font(.system(size: 13, weight: .semibold))
+                        .foregroundColor(AppTheme.primary)
+                }
+                .buttonStyle(.plain)
+            }
+        }
+        .padding(.horizontal, 16)
+        .padding(.top, 14)
+        .padding(.bottom, 8)
+    }
+
+    func miniStatusBadge(text: String, tint: Color) -> some View {
+        Text(text)
+            .font(.system(size: 11, weight: .semibold))
+            .foregroundColor(tint)
+            .padding(.horizontal, 8)
+            .padding(.vertical, 5)
+            .background(
+                Capsule(style: .continuous)
+                    .fill(tint.opacity(0.10))
+            )
+    }
+}
+
+private extension View {
+    func homeCardBackground() -> some View {
+        self.background(
+            RoundedRectangle(cornerRadius: 20, style: .continuous)
+                .fill(Color.white.opacity(0.78))
+                .overlay(
+                    RoundedRectangle(cornerRadius: 20, style: .continuous)
+                        .stroke(Color.white.opacity(0.92), lineWidth: 1)
+                )
+                .shadow(color: Color.black.opacity(0.05), radius: 18, x: 0, y: 8)
+        )
     }
 }
 

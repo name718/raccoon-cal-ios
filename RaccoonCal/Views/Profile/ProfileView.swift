@@ -81,6 +81,7 @@ struct ProfileView: View {
                         }
                         .padding(.horizontal, 16)
                         .padding(.bottom, 32)
+                        .appMainTabScrollableContent()
                     }
                     .refreshable {
                         await loadAllData(showPageError: false)
@@ -143,11 +144,32 @@ struct ProfileView: View {
 
     private var loadingView: some View {
         VStack(spacing: 16) {
-            ProgressView().scaleEffect(1.2)
-            Text("加载中...")
-                .font(.system(size: 14))
+            Image("RaccoonGreeting")
+                .resizable()
+                .scaledToFit()
+                .frame(width: 84, height: 84)
+
+            ProgressView().scaleEffect(1.1)
+
+            Text("正在整理你的个人数据")
+                .font(.system(size: 15, weight: .semibold))
+                .foregroundColor(AppTheme.textPrimary)
+
+            Text("包括资料、联盟、成就和体重趋势。")
+                .font(.system(size: 12, weight: .medium))
                 .foregroundColor(AppTheme.textSecondary)
         }
+        .padding(.horizontal, 24)
+        .padding(.vertical, 26)
+        .background(
+            RoundedRectangle(cornerRadius: 24, style: .continuous)
+                .fill(Color.white.opacity(0.82))
+                .overlay(
+                    RoundedRectangle(cornerRadius: 24, style: .continuous)
+                        .stroke(Color.white.opacity(0.94), lineWidth: 1)
+                )
+                .shadow(color: Color.black.opacity(0.05), radius: 18, x: 0, y: 8)
+        )
         .frame(maxWidth: .infinity, maxHeight: .infinity)
     }
 
@@ -489,9 +511,15 @@ struct ProfileView: View {
                 Spacer()
                 if totalAchievements > 0 {
                     let pct = Int(Double(unlockedCount) / Double(totalAchievements) * 100)
-                    Text("\(unlockedCount)/\(totalAchievements)  (\(pct)%)")
-                        .font(.system(size: 13, weight: .medium))
-                        .foregroundColor(AppTheme.textSecondary)
+                    Text("\(unlockedCount)/\(totalAchievements) · \(pct)%")
+                        .font(.system(size: 12, weight: .semibold))
+                        .foregroundColor(AppTheme.primary)
+                        .padding(.horizontal, 10)
+                        .padding(.vertical, 6)
+                        .background(
+                            Capsule(style: .continuous)
+                                .fill(AppTheme.primary.opacity(0.10))
+                        )
                         .padding(.trailing, 16)
                         .padding(.top, 14)
                 }
@@ -514,8 +542,14 @@ struct ProfileView: View {
                             Image(systemName: showAllAchievements ? "chevron.up" : "chevron.down")
                                 .font(.system(size: 11, weight: .semibold))
                         }
-                        .foregroundColor(AppTheme.primary)
+                        .foregroundColor(AppTheme.primaryDark)
                         .frame(maxWidth: .infinity)
+                        .padding(.horizontal, 16)
+                        .padding(.vertical, 12)
+                        .background(
+                            Capsule(style: .continuous)
+                                .fill(AppTheme.primary.opacity(0.10))
+                        )
                         .padding(.horizontal, 16)
                         .padding(.bottom, 16)
                     }
@@ -915,8 +949,13 @@ struct ProfileView: View {
 private extension View {
     func cardBackground() -> some View {
         self.background(
-            RoundedRectangle(cornerRadius: 16)
-                .fill(Color.white.opacity(0.7))
+            RoundedRectangle(cornerRadius: 20, style: .continuous)
+                .fill(Color.white.opacity(0.78))
+                .overlay(
+                    RoundedRectangle(cornerRadius: 20, style: .continuous)
+                        .stroke(Color.white.opacity(0.92), lineWidth: 1)
+                )
+                .shadow(color: Color.black.opacity(0.05), radius: 18, x: 0, y: 8)
         )
     }
 }

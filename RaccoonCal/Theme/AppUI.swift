@@ -1,5 +1,9 @@
 import SwiftUI
 
+enum AppLayout {
+    static let mainTabContentBottomInset: CGFloat = 118
+}
+
 enum AppButtonKind {
     case primary
     case secondary
@@ -511,5 +515,9 @@ extension View {
                 dismissTitle: dismissTitle
             )
         )
+    }
+
+    func appMainTabScrollableContent() -> some View {
+        padding(.bottom, AppLayout.mainTabContentBottomInset)
     }
 }

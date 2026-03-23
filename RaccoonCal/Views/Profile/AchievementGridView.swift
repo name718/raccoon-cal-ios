@@ -46,29 +46,49 @@ struct AchievementGridView: View {
 private struct AchievementBadgeCell: View {
 
     let achievement: Achievement
+    
+    private var statusTint: Color {
+        achievement.unlocked ? AppTheme.secondary : AppTheme.textDisabled
+    }
 
     var body: some View {
-        VStack(spacing: 6) {
-            // Badge circle
+        VStack(spacing: 10) {
             ZStack {
-                Circle()
-                    .fill(achievement.unlocked
-                          ? AppTheme.primary.opacity(0.15)
-                          : AppTheme.backgroundSecondary)
-                    .frame(width: 56, height: 56)
+                RoundedRectangle(cornerRadius: 18, style: .continuous)
+                    .fill(
+                        achievement.unlocked
+                            ? LinearGradient(
+                                colors: [
+                                    AppTheme.primary.opacity(0.18),
+                                    AppTheme.primaryLight.opacity(0.30)
+                                ],
+                                startPoint: .topLeading,
+                                endPoint: .bottomTrailing
+                            )
+                            : LinearGradient(
+                                colors: [
+                                    AppTheme.backgroundSecondary,
+                                    AppTheme.backgroundSecondary.opacity(0.88)
+                                ],
+                                startPoint: .topLeading,
+                                endPoint: .bottomTrailing
+                            )
+                    )
+                    .frame(width: 68, height: 68)
                     .overlay(
-                        Circle()
+                        RoundedRectangle(cornerRadius: 18, style: .continuous)
                             .strokeBorder(
-                                achievement.unlocked ? AppTheme.secondary : Color.clear,
-                                lineWidth: 2
+                                achievement.unlocked
+                                    ? AppTheme.primary.opacity(0.24)
+                                    : Color.white.opacity(0.72),
+                                lineWidth: 1
                             )
                     )
 
-                badgeImage(size: 38)
+                badgeImage(size: 42)
                     .grayscale(achievement.unlocked ? 0 : 1)
-                    .opacity(achievement.unlocked ? 1 : 0.5)
+                    .opacity(achievement.unlocked ? 1 : 0.52)
 
-                // Lock overlay for locked achievements
                 if !achievement.unlocked {
                     VStack {
                         Spacer()
@@ -81,10 +101,9 @@ private struct AchievementBadgeCell: View {
                                 .background(Circle().fill(AppTheme.textDisabled))
                         }
                     }
-                    .frame(width: 56, height: 56)
+                    .frame(width: 68, height: 68)
                 }
 
-                // Checkmark overlay for unlocked achievements
                 if achievement.unlocked {
                     VStack {
                         Spacer()
@@ -96,47 +115,56 @@ private struct AchievementBadgeCell: View {
                                 .background(Circle().fill(Color.white).frame(width: 12, height: 12))
                         }
                     }
-                    .frame(width: 56, height: 56)
+                    .frame(width: 68, height: 68)
                 }
             }
+            .shadow(
+                color: achievement.unlocked ? AppTheme.primary.opacity(0.12) : .clear,
+                radius: 10,
+                x: 0,
+                y: 6
+            )
 
-            // Title
             Text(achievement.title)
-                .font(.system(size: 10, weight: .medium))
-                .foregroundColor(achievement.unlocked ? AppTheme.textPrimary : AppTheme.textDisabled)
-                .lineLimit(2)
+                .font(.system(size: 11, weight: .semibold))
+                .foregroundColor(achievement.unlocked ? AppTheme.textPrimary : AppTheme.textSecondary)
+                .lineLimit(1)
+                .minimumScaleFactor(0.82)
                 .multilineTextAlignment(.center)
-                .frame(maxWidth: .infinity)
+                .frame(maxWidth: .infinity, minHeight: 16)
 
-            // Progress / unlocked label
-            if achievement.unlocked {
-                Text("已解锁")
-                    .font(.system(size: 9, weight: .semibold))
-                    .foregroundColor(AppTheme.secondary)
-                    .padding(.horizontal, 6)
-                    .padding(.vertical, 2)
-                    .background(Capsule().fill(AppTheme.secondary.opacity(0.12)))
-            } else {
-                Text("未解锁")
-                    .font(.system(size: 9))
-                    .foregroundColor(AppTheme.textDisabled)
-            }
+            Text(achievement.unlocked ? "已解锁" : "+\(achievement.xpReward) XP")
+                .font(.system(size: 9, weight: .semibold))
+                .foregroundColor(statusTint)
+                .padding(.horizontal, 8)
+                .padding(.vertical, 4)
+                .background(
+                    Capsule(style: .continuous)
+                        .fill(statusTint.opacity(achievement.unlocked ? 0.12 : 0.10))
+                )
         }
-        .padding(.vertical, 10)
-        .padding(.horizontal, 6)
+        .frame(maxWidth: .infinity, minHeight: 138, alignment: .top)
+        .padding(.vertical, 14)
+        .padding(.horizontal, 10)
         .background(
-            RoundedRectangle(cornerRadius: 12)
-                .fill(achievement.unlocked
-                      ? AppTheme.primary.opacity(0.06)
-                      : AppTheme.backgroundSecondary.opacity(0.5))
+            RoundedRectangle(cornerRadius: 18, style: .continuous)
+                .fill(
+                    achievement.unlocked
+                        ? Color.white.opacity(0.86)
+                        : Color.white.opacity(0.68)
+                )
         )
         .overlay(
-            RoundedRectangle(cornerRadius: 12)
+            RoundedRectangle(cornerRadius: 18, style: .continuous)
                 .strokeBorder(
-                    achievement.unlocked ? AppTheme.primary.opacity(0.2) : Color.clear,
+                    achievement.unlocked
+                        ? AppTheme.primary.opacity(0.18)
+                        : Color.white.opacity(0.72),
                     lineWidth: 1
                 )
         )
+        .shadow(color: Color.black.opacity(0.03), radius: 12, x: 0, y: 6)
+        .contentShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
     }
 
     @ViewBuilder

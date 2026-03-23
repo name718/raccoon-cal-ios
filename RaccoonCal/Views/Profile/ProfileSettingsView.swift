@@ -8,6 +8,20 @@ import SwiftUI
 struct ProfileSettingsView: View {
     @StateObject private var userManager = UserManager.shared
     @State private var showLogoutAlert = false
+    
+    private var currentUsername: String {
+        userManager.currentUser?.username ?? "当前账号"
+    }
+    
+    private var currentAccountLine: String {
+        if let email = userManager.currentUser?.email, !email.isEmpty {
+            return email
+        }
+        if let phone = userManager.currentUser?.phone, !phone.isEmpty {
+            return phone
+        }
+        return "账号信息已同步"
+    }
 
     var body: some View {
         ZStack {
@@ -39,24 +53,46 @@ struct ProfileSettingsView: View {
     }
 
     private var headerCard: some View {
-        HStack(spacing: 14) {
-            Image("RaccoonThinking")
-                .resizable()
-                .scaledToFit()
-                .frame(width: 64, height: 64)
+        HStack(spacing: 16) {
+            ZStack {
+                RoundedRectangle(cornerRadius: 18, style: .continuous)
+                    .fill(AppTheme.primary.opacity(0.10))
+                    .frame(width: 76, height: 76)
 
-            VStack(alignment: .leading, spacing: 4) {
-                Text("设置中心")
-                    .font(.system(size: 18, weight: .bold))
-                    .foregroundColor(AppTheme.textPrimary)
-
-                Text("通知、提醒和账号操作都收在这里，主页会更清爽。")
-                    .font(.system(size: 13))
-                    .foregroundColor(AppTheme.textSecondary)
-                    .fixedSize(horizontal: false, vertical: true)
+                Image("RaccoonThinking")
+                    .resizable()
+                    .scaledToFit()
+                    .frame(width: 58, height: 58)
             }
 
-            Spacer()
+            VStack(alignment: .leading, spacing: 6) {
+                Text("设置中心")
+                    .font(.system(size: 19, weight: .bold))
+                    .foregroundColor(AppTheme.textPrimary)
+
+                Text("把通知、提醒和账号操作收进一个完整页面，信息更清晰。")
+                    .font(.system(size: 13, weight: .medium))
+                    .foregroundColor(AppTheme.textSecondary)
+                    .fixedSize(horizontal: false, vertical: true)
+
+                VStack(alignment: .leading, spacing: 4) {
+                    Text(currentUsername)
+                        .font(.system(size: 13, weight: .semibold))
+                        .foregroundColor(AppTheme.textPrimary)
+                    Text(currentAccountLine)
+                        .font(.system(size: 12))
+                        .foregroundColor(AppTheme.textSecondary)
+                        .lineLimit(1)
+                }
+                .padding(.horizontal, 10)
+                .padding(.vertical, 8)
+                .background(
+                    RoundedRectangle(cornerRadius: 12, style: .continuous)
+                        .fill(Color.white.opacity(0.72))
+                )
+            }
+
+            Spacer(minLength: 0)
         }
         .padding(16)
         .settingsCardBackground()
@@ -149,8 +185,13 @@ struct ProfileSettingsView: View {
 private extension View {
     func settingsCardBackground() -> some View {
         self.background(
-            RoundedRectangle(cornerRadius: 20, style: .continuous)
-                .fill(Color.white.opacity(0.72))
+            RoundedRectangle(cornerRadius: 22, style: .continuous)
+                .fill(Color.white.opacity(0.80))
+                .overlay(
+                    RoundedRectangle(cornerRadius: 22, style: .continuous)
+                        .stroke(Color.white.opacity(0.92), lineWidth: 1)
+                )
+                .shadow(color: Color.black.opacity(0.05), radius: 16, x: 0, y: 8)
         )
     }
 }

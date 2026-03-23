@@ -113,18 +113,11 @@ struct RecordView: View {
                     }
                     .padding(.horizontal, 16)
                     .padding(.bottom, 24)
+                    .appMainTabScrollableContent()
                 }
                 // 18.7 下拉刷新
                 .refreshable {
                     await loadAll()
-                }
-
-                // 加载指示器
-                if isLoading {
-                    ProgressView()
-                        .scaleEffect(1.2)
-                        .frame(maxWidth: .infinity, maxHeight: .infinity)
-                        .background(Color.black.opacity(0.05))
                 }
 
                 Color.clear
@@ -180,32 +173,27 @@ struct RecordView: View {
 
     private var calendarSection: some View {
         VStack(alignment: .leading, spacing: 12) {
-            HStack {
-                Text("打卡日历")
-                    .font(.system(size: 15, weight: .semibold))
-                    .foregroundColor(AppTheme.textPrimary)
-                Spacer()
-                // 图例
-                HStack(spacing: 6) {
-                    Circle()
-                        .fill(AppTheme.primary)
-                        .frame(width: 8, height: 8)
-                    Text("已打卡")
-                        .font(.system(size: 11))
-                        .foregroundColor(AppTheme.textSecondary)
-                }
+            recordSectionHeader(
+                title: "打卡日历",
+                icon: "calendar.badge.clock",
+                trailingText: "已选 \(formattedSelectedDate)"
+            )
+
+            HStack(spacing: 6) {
+                Circle()
+                    .fill(AppTheme.primary)
+                    .frame(width: 8, height: 8)
+                Text("已打卡")
+                    .font(.system(size: 11, weight: .medium))
+                    .foregroundColor(AppTheme.textSecondary)
             }
             .padding(.horizontal, 16)
-            .padding(.top, 14)
 
             calendarGrid
 
             Spacer(minLength: 14)
         }
-        .background(
-            RoundedRectangle(cornerRadius: 16)
-                .fill(Color.white.opacity(0.7))
-        )
+        .recordCardBackground()
     }
 
     /// 过去 30 天日历网格：已打卡用主色填充，选中日期用主色背景+白字，今天加粗
@@ -262,20 +250,11 @@ struct RecordView: View {
 
     private var foodRecordsSection: some View {
         VStack(spacing: 0) {
-            HStack {
-                Text(formattedSelectedDate)
-                    .font(.system(size: 15, weight: .semibold))
-                    .foregroundColor(AppTheme.textPrimary)
-                Spacer()
-                if let summary = dailyCalSummary {
-                    Text("\(Int(summary.totalCalories)) kcal")
-                        .font(.system(size: 14, weight: .medium))
-                        .foregroundColor(AppTheme.primary)
-                }
-            }
-            .padding(.horizontal, 16)
-            .padding(.top, 14)
-            .padding(.bottom, 8)
+            recordSectionHeader(
+                title: "当日记录",
+                icon: "fork.knife.circle.fill",
+                trailingText: dailyCalSummary.map { "\(Int($0.totalCalories)) kcal" } ?? nil
+            )
 
             Divider()
                 .padding(.horizontal, 16)
@@ -289,10 +268,7 @@ struct RecordView: View {
 
             Spacer(minLength: 14)
         }
-        .background(
-            RoundedRectangle(cornerRadius: 16)
-                .fill(Color.white.opacity(0.7))
-        )
+        .recordCardBackground()
     }
 
     private func mealGroupSection(group: MealGroup) -> some View {
@@ -333,37 +309,46 @@ struct RecordView: View {
 
     private func foodRecordRow(record: FoodRecord) -> some View {
         HStack(spacing: 12) {
-            if let imageUrl = record.imageUrl,
-               let url = URL(string: imageUrl) {
-                AsyncImage(url: url) { image in
-                    image
-                        .resizable()
-                        .scaledToFill()
-                } placeholder: {
-                    RoundedRectangle(cornerRadius: 12, style: .continuous)
-                        .fill(AppTheme.backgroundSecondary)
-                        .overlay(
-                            Image(systemName: "photo")
-                                .foregroundColor(AppTheme.textSecondary)
+            recordThumbnail(for: record)
+
+            VStack(alignment: .leading, spacing: 6) {
+                HStack(spacing: 8) {
+                    Text(record.foodName)
+                        .font(.system(size: 14, weight: .semibold))
+                        .foregroundColor(AppTheme.textPrimary)
+                        .lineLimit(1)
+
+                    Text(formattedRecordTime(record.recordedAt))
+                        .font(.system(size: 11, weight: .semibold))
+                        .foregroundColor(AppTheme.textSecondary)
+                        .padding(.horizontal, 8)
+                        .padding(.vertical, 4)
+                        .background(
+                            Capsule(style: .continuous)
+                                .fill(AppTheme.primary.opacity(0.08))
                         )
                 }
-                .frame(width: 52, height: 52)
-                .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
-            }
 
-            VStack(alignment: .leading, spacing: 3) {
-                Text(record.foodName)
-                    .font(.system(size: 14))
-                    .foregroundColor(AppTheme.textPrimary)
-                Text("\(Int(record.servingSize))g · 蛋白质 \(String(format: "%.1f", record.protein))g · 脂肪 \(String(format: "%.1f", record.fat))g · 碳水 \(String(format: "%.1f", record.carbs))g")
+                Text("\(mealTypeLabel(record.mealType)) · \(Int(record.servingSize))g")
+                    .font(.system(size: 12, weight: .medium))
+                    .foregroundColor(AppTheme.textSecondary)
+
+                Text("蛋白质 \(String(format: "%.1f", record.protein))g · 脂肪 \(String(format: "%.1f", record.fat))g · 碳水 \(String(format: "%.1f", record.carbs))g")
                     .font(.system(size: 12))
                     .foregroundColor(AppTheme.textSecondary)
                     .lineLimit(1)
             }
-            Spacer()
-            Text("\(Int(record.calories)) kcal")
-                .font(.system(size: 13, weight: .medium))
-                .foregroundColor(AppTheme.textPrimary)
+
+            Spacer(minLength: 8)
+
+            VStack(alignment: .trailing, spacing: 4) {
+                Text("\(Int(record.calories))")
+                    .font(.system(size: 18, weight: .bold))
+                    .foregroundColor(AppTheme.textPrimary)
+                Text("kcal")
+                    .font(.system(size: 11, weight: .medium))
+                    .foregroundColor(AppTheme.textSecondary)
+            }
         }
         .padding(.horizontal, 16)
         .padding(.vertical, 10)
@@ -373,18 +358,11 @@ struct RecordView: View {
 
     private var calorieChartSection: some View {
         VStack(alignment: .leading, spacing: 12) {
-            HStack {
-                Text("近 7 天卡路里")
-                    .font(.system(size: 15, weight: .semibold))
-                    .foregroundColor(AppTheme.textPrimary)
-                Spacer()
-                if isLoadingStats {
-                    ProgressView()
-                        .scaleEffect(0.8)
-                }
-            }
-            .padding(.horizontal, 16)
-            .padding(.top, 14)
+            recordSectionHeader(
+                title: "近 7 天卡路里",
+                icon: "chart.line.uptrend.xyaxis",
+                trailingText: isLoadingStats ? "更新中" : nil
+            )
 
             // Task 18.5 — 折线图（含目标虚线）
             CalorieLineChartView(
@@ -394,28 +372,18 @@ struct RecordView: View {
 
             Spacer(minLength: 14)
         }
-        .background(
-            RoundedRectangle(cornerRadius: 16)
-                .fill(Color.white.opacity(0.7))
-        )
+        .recordCardBackground()
     }
 
     // MARK: - 18.6 营养素柱状图
 
     private var macroChartSection: some View {
         VStack(alignment: .leading, spacing: 12) {
-            HStack {
-                Text("近 7 天营养素均值")
-                    .font(.system(size: 15, weight: .semibold))
-                    .foregroundColor(AppTheme.textPrimary)
-                Spacer()
-                if isLoadingStats {
-                    ProgressView()
-                        .scaleEffect(0.8)
-                }
-            }
-            .padding(.horizontal, 16)
-            .padding(.top, 14)
+            recordSectionHeader(
+                title: "近 7 天营养素均值",
+                icon: "chart.bar.xaxis",
+                trailingText: isLoadingStats ? "更新中" : nil
+            )
 
             // Task 18.6 — 三大营养素柱状图（蛋白质 / 脂肪 / 碳水日均值）
             NutrientBarChartView(
@@ -426,10 +394,7 @@ struct RecordView: View {
 
             Spacer(minLength: 14)
         }
-        .background(
-            RoundedRectangle(cornerRadius: 16)
-                .fill(Color.white.opacity(0.7))
-        )
+        .recordCardBackground()
     }
 
     // MARK: - 18.8 无记录引导
@@ -441,13 +406,23 @@ struct RecordView: View {
                 .scaledToFit()
                 .frame(width: 100, height: 100)
 
-            Text(isLoading ? "加载中..." : "这天还没有饮食记录")
-                .font(.system(size: 15, weight: .medium))
+            Text(isLoading ? "正在加载记录..." : "这天还没有饮食记录")
+                .font(.system(size: 16, weight: .semibold))
+                .foregroundColor(AppTheme.textPrimary)
+
+            Text(formattedSelectedDate)
+                .font(.system(size: 12, weight: .medium))
                 .foregroundColor(AppTheme.textSecondary)
+                .padding(.horizontal, 10)
+                .padding(.vertical, 6)
+                .background(
+                    Capsule(style: .continuous)
+                        .fill(AppTheme.primary.opacity(0.10))
+                )
 
             if !isLoading {
                 Text("添加今天的饮食记录，养成稳定的健康习惯。")
-                    .font(.system(size: 13))
+                    .font(.system(size: 13, weight: .medium))
                     .foregroundColor(AppTheme.textDisabled)
                     .multilineTextAlignment(.center)
 
@@ -471,10 +446,7 @@ struct RecordView: View {
         .frame(maxWidth: .infinity)
         .padding(.vertical, 32)
         .padding(.horizontal, 16)
-        .background(
-            RoundedRectangle(cornerRadius: 16)
-                .fill(Color.white.opacity(0.7))
-        )
+        .recordCardBackground()
     }
 
     // MARK: - Data Loading
@@ -596,6 +568,86 @@ struct RecordView: View {
         case "snack":     return "leaf.fill"
         default:          return "fork.knife"
         }
+    }
+
+    @ViewBuilder
+    private func recordThumbnail(for record: FoodRecord) -> some View {
+        if let imageUrl = record.imageUrl,
+           let url = URL(string: imageUrl) {
+            AsyncImage(url: url) { image in
+                image
+                    .resizable()
+                    .scaledToFill()
+            } placeholder: {
+                thumbnailPlaceholder
+            }
+            .frame(width: 56, height: 56)
+            .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
+        } else {
+            thumbnailPlaceholder
+                .frame(width: 56, height: 56)
+        }
+    }
+
+    private var thumbnailPlaceholder: some View {
+        RoundedRectangle(cornerRadius: 14, style: .continuous)
+            .fill(AppTheme.backgroundSecondary)
+            .overlay(
+                Image(systemName: "fork.knife.circle.fill")
+                    .font(.system(size: 22))
+                    .foregroundColor(AppTheme.primary.opacity(0.72))
+            )
+    }
+
+    private func formattedRecordTime(_ isoString: String) -> String {
+        let formatter = ISO8601DateFormatter()
+        formatter.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
+        let date = formatter.date(from: isoString) ?? ISO8601DateFormatter().date(from: isoString)
+        guard let date else { return "已记录" }
+
+        let display = DateFormatter()
+        display.locale = Locale(identifier: "zh_CN")
+        display.dateFormat = "HH:mm"
+        return display.string(from: date)
+    }
+}
+
+private extension RecordView {
+    func recordSectionHeader(title: String, icon: String, trailingText: String? = nil) -> some View {
+        HStack(spacing: 10) {
+            Image(systemName: icon)
+                .font(.system(size: 15, weight: .semibold))
+                .foregroundColor(AppTheme.primary)
+
+            Text(title)
+                .font(.system(size: 15, weight: .semibold))
+                .foregroundColor(AppTheme.textPrimary)
+
+            Spacer()
+
+            if let trailingText {
+                Text(trailingText)
+                    .font(.system(size: 12, weight: .medium))
+                    .foregroundColor(AppTheme.textSecondary)
+            }
+        }
+        .padding(.horizontal, 16)
+        .padding(.top, 14)
+        .padding(.bottom, 8)
+    }
+}
+
+private extension View {
+    func recordCardBackground() -> some View {
+        self.background(
+            RoundedRectangle(cornerRadius: 20, style: .continuous)
+                .fill(Color.white.opacity(0.78))
+                .overlay(
+                    RoundedRectangle(cornerRadius: 20, style: .continuous)
+                        .stroke(Color.white.opacity(0.92), lineWidth: 1)
+                )
+                .shadow(color: Color.black.opacity(0.05), radius: 18, x: 0, y: 8)
+        )
     }
 }
 
