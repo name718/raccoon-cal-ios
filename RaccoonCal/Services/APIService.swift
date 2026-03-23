@@ -11,6 +11,7 @@ import UIKit
 class APIService: ObservableObject {
     static let shared = APIService()
     static let authenticationExpiredNotification = Notification.Name("APIServiceAuthenticationExpired")
+    private let usesFoodRecognitionPlaceholder = true
     
     // 可配置的baseURL，支持本地开发和生产环境
     private let baseURL: String = {
@@ -198,6 +199,11 @@ class APIService: ObservableObject {
 
     /// POST /api/food/recognize — 上传图片识别食物（multipart/form-data）
     func recognizeFood(imageData: Data, mimeType: String = "image/jpeg") async throws -> FoodRecognitionResult {
+        if usesFoodRecognitionPlaceholder {
+            try? await Task.sleep(nanoseconds: 600_000_000)
+            return placeholderRecognitionResult(for: imageData)
+        }
+
         guard let url = URL(string: baseURL + "/food/recognize") else {
             throw APIServiceError.invalidURL
         }
@@ -228,6 +234,62 @@ class APIService: ObservableObject {
         let decoded = try JSONDecoder().decode(APIResponse<FoodRecognitionResult>.self, from: data)
         guard let result = decoded.data else { throw APIServiceError.noData }
         return result
+    }
+
+    private func placeholderRecognitionResult(for imageData: Data) -> FoodRecognitionResult {
+        let hour = Calendar.current.component(.hour, from: Date())
+        let defaultMealType: MealType = switch hour {
+        case ..<10:
+            .breakfast
+        case 10..<15:
+            .lunch
+        case 15..<21:
+            .dinner
+        default:
+            .snack
+        }
+
+        let samples: [RecognizedFood] = [
+            RecognizedFood(
+                name: "香煎鸡胸肉沙拉",
+                calories: 368,
+                protein: 31,
+                fat: 16,
+                carbs: 22,
+                servingSize: 260,
+                mealType: defaultMealType.rawValue
+            ),
+            RecognizedFood(
+                name: "番茄牛肉饭",
+                calories: 512,
+                protein: 26,
+                fat: 14,
+                carbs: 66,
+                servingSize: 320,
+                mealType: defaultMealType.rawValue
+            ),
+            RecognizedFood(
+                name: "酸奶水果燕麦碗",
+                calories: 286,
+                protein: 14,
+                fat: 7,
+                carbs: 41,
+                servingSize: 220,
+                mealType: defaultMealType.rawValue
+            ),
+            RecognizedFood(
+                name: "三文鱼蔬菜拼盘",
+                calories: 428,
+                protein: 29,
+                fat: 21,
+                carbs: 28,
+                servingSize: 280,
+                mealType: defaultMealType.rawValue
+            )
+        ]
+
+        let sample = samples[abs(imageData.count) % samples.count]
+        return FoodRecognitionResult(foods: [sample], confidence: 0.82)
     }
 
     /// POST /api/food/records — 保存一条饮食记录

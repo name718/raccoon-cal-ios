@@ -514,15 +514,26 @@ struct ManualFoodEntrySheet: View {
     let initialMealType: MealType
     let initialFood: RecognizedFood
     var onSaved: ((RecognizedFood) -> Void)? = nil
-    @State private var seedFood: RecognizedFood
-    @State private var selectedPhotoData: Data?
 
     @Environment(\.dismiss) private var dismiss
     @StateObject private var gamificationManager = GamificationManager.shared
+    @State private var foodName: String
+    @State private var selectedMealType: MealType
+    @State private var servingSize: Double
+    @State private var calories: Double
+    @State private var protein: Double
+    @State private var fat: Double
+    @State private var carbs: Double
+    @State private var selectedPhotoData: Data?
     @State private var isSaving = false
+    @State private var isRecognizing = false
     @State private var errorMessage: String? = nil
+    @State private var errorTitle = "保存失败"
     @State private var showPhotoPicker = false
+    @State private var showCameraCapture = false
+    @State private var pendingPhotoAction: ManualPhotoAction = .attachOnly
     @State private var progressMessage = "正在保存记录..."
+    @State private var recognitionBannerMessage = "识别能力正在联调中，当前使用占位数据回填，保存前请确认内容。"
 
     init(
         initialMealType: MealType,
@@ -541,7 +552,15 @@ struct ManualFoodEntrySheet: View {
             mealType: initialMealType.rawValue
         )
         self.onSaved = onSaved
-        self._seedFood = State(initialValue: self.initialFood)
+        self._foodName = State(initialValue: self.initialFood.name)
+        self._selectedMealType = State(
+            initialValue: MealType(rawValue: self.initialFood.mealType ?? initialMealType.rawValue) ?? initialMealType
+        )
+        self._servingSize = State(initialValue: self.initialFood.servingSize > 0 ? self.initialFood.servingSize : 100)
+        self._calories = State(initialValue: max(0, self.initialFood.calories))
+        self._protein = State(initialValue: max(0, self.initialFood.protein))
+        self._fat = State(initialValue: max(0, self.initialFood.fat))
+        self._carbs = State(initialValue: max(0, self.initialFood.carbs))
         self._selectedPhotoData = State(initialValue: initialPhotoData)
     }
 
@@ -550,51 +569,79 @@ struct ManualFoodEntrySheet: View {
         return UIImage(data: selectedPhotoData)
     }
 
-    var body: some View {
-        ZStack {
-            FoodEditFormView(
-                food: seedFood,
-                attachmentImage: selectedPhotoImage,
-                onSelectPhoto: {
-                    showPhotoPicker = true
-                },
-                onRemovePhoto: {
-                    selectedPhotoData = nil
-                },
-                onConfirm: { updatedFood in
-                    seedFood = updatedFood
-                    Task { await save(updatedFood) }
-                },
-                onCancel: {
-                    dismiss()
-                }
-            )
+    private var canSave: Bool {
+        !foodName.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+    }
 
-            if isSaving {
-                Color.black.opacity(0.08)
+    private var draftFood: RecognizedFood {
+        RecognizedFood(
+            name: foodName.trimmingCharacters(in: .whitespacesAndNewlines),
+            calories: max(0, calories),
+            protein: max(0, protein),
+            fat: max(0, fat),
+            carbs: max(0, carbs),
+            servingSize: min(9999, max(1, servingSize)),
+            mealType: selectedMealType.rawValue
+        )
+    }
+
+    var body: some View {
+        NavigationView {
+            ZStack {
+                AppTheme.gradientBackground
                     .ignoresSafeArea()
 
-                ProgressView(progressMessage)
-                    .padding(.horizontal, 20)
-                    .padding(.vertical, 14)
-                    .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 16, style: .continuous))
+                ScrollView(showsIndicators: false) {
+                    VStack(spacing: 16) {
+                        manualHeaderCard
+                        photoCapabilityCard
+                        basicInfoCard
+                        nutritionCard
+                    }
+                    .padding(.horizontal, 16)
+                    .padding(.top, 16)
+                    .padding(.bottom, 140)
+                }
             }
+            .navigationTitle("手动填写")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .cancellationAction) {
+                    Button("取消") { dismiss() }
+                        .foregroundColor(AppTheme.textSecondary)
+                }
+            }
+        }
+        .safeAreaInset(edge: .bottom, spacing: 0) {
+            saveBar
         }
         .sheet(isPresented: $showPhotoPicker) {
             PhotoLibraryPicker { rawData in
-                if let normalizedData = normalizedUploadImageData(from: rawData) {
-                    selectedPhotoData = normalizedData
-                } else {
-                    errorMessage = "图片处理失败，请重新选择"
-                }
+                handlePickedPhoto(rawData)
             }
         }
+        .fullScreenCover(isPresented: $showCameraCapture) {
+            AddRecordCameraCaptureView(
+                onClose: {
+                    showCameraCapture = false
+                },
+                onCaptured: { rawData in
+                    showCameraCapture = false
+                    handleCapturedPhoto(rawData)
+                }
+            )
+        }
+        .delayedLoadingOverlay(
+            isLoading: isSaving || isRecognizing,
+            message: progressMessage,
+            delayNanoseconds: 150_000_000
+        )
         .appDialog(
             isPresented: Binding(
                 get: { errorMessage != nil },
                 set: { if !$0 { errorMessage = nil } }
             ),
-            title: "保存失败",
+            title: errorTitle,
             message: errorMessage ?? "",
             tone: .error,
             primaryAction: AppDialogAction("确定") {
@@ -603,9 +650,272 @@ struct ManualFoodEntrySheet: View {
         )
     }
 
+    private var manualHeaderCard: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            HStack(spacing: 12) {
+                ZStack {
+                    Circle()
+                        .fill(AppTheme.primary.opacity(0.16))
+                        .frame(width: 48, height: 48)
+
+                    Image(systemName: "square.and.pencil")
+                        .font(.system(size: 22, weight: .semibold))
+                        .foregroundColor(AppTheme.primary)
+                }
+
+                VStack(alignment: .leading, spacing: 4) {
+                    Text("手动记录饮食")
+                        .font(.system(size: 21, weight: .bold))
+                        .foregroundColor(AppTheme.textPrimary)
+
+                    Text("支持直接填写、拍照识别回填、相册识别回填，以及先上传照片后再识别。")
+                        .font(.system(size: 13, weight: .medium))
+                        .foregroundColor(AppTheme.textSecondary)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
+            }
+
+            HStack(spacing: 8) {
+                Image(systemName: "wand.and.stars")
+                    .font(.system(size: 13, weight: .semibold))
+                    .foregroundColor(AppTheme.info)
+
+                Text(recognitionBannerMessage)
+                    .font(.system(size: 12, weight: .medium))
+                    .foregroundColor(AppTheme.textSecondary)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+            .padding(12)
+            .background(
+                RoundedRectangle(cornerRadius: 16, style: .continuous)
+                    .fill(AppTheme.info.opacity(0.08))
+            )
+        }
+        .padding(18)
+        .background(manualCardBackground)
+    }
+
+    private var photoCapabilityCard: some View {
+        VStack(alignment: .leading, spacing: 14) {
+            Text("照片与识别")
+                .font(.system(size: 17, weight: .bold))
+                .foregroundColor(AppTheme.textPrimary)
+
+            if let selectedPhotoImage {
+                Image(uiImage: selectedPhotoImage)
+                    .resizable()
+                    .scaledToFill()
+                    .frame(maxWidth: .infinity)
+                    .frame(height: 188)
+                    .clipShape(RoundedRectangle(cornerRadius: 20, style: .continuous))
+                    .overlay(alignment: .topTrailing) {
+                        Button {
+                            selectedPhotoData = nil
+                        } label: {
+                            Image(systemName: "xmark.circle.fill")
+                                .font(.system(size: 24))
+                                .foregroundColor(.white)
+                                .shadow(color: .black.opacity(0.2), radius: 6, x: 0, y: 2)
+                        }
+                        .padding(10)
+                    }
+            } else {
+                RoundedRectangle(cornerRadius: 20, style: .continuous)
+                    .fill(Color.white.opacity(0.72))
+                    .frame(height: 156)
+                    .overlay {
+                        VStack(spacing: 10) {
+                            Image(systemName: "photo.on.rectangle.angled")
+                                .font(.system(size: 30, weight: .medium))
+                                .foregroundColor(AppTheme.primary)
+                            Text("还没有上传照片")
+                                .font(.system(size: 15, weight: .semibold))
+                                .foregroundColor(AppTheme.textPrimary)
+                            Text("你可以直接拍照识别、从相册识别，或仅上传照片后再手动触发识别。")
+                                .font(.system(size: 12, weight: .medium))
+                                .foregroundColor(AppTheme.textSecondary)
+                                .multilineTextAlignment(.center)
+                                .padding(.horizontal, 18)
+                        }
+                    }
+            }
+
+            HStack(spacing: 10) {
+                manualActionButton(
+                    title: "拍照识别",
+                    systemImage: "camera.fill",
+                    tint: AppTheme.primary
+                ) {
+                    showCameraCapture = true
+                }
+
+                manualActionButton(
+                    title: "相册识别",
+                    systemImage: "sparkles.rectangle.stack",
+                    tint: AppTheme.info
+                ) {
+                    pendingPhotoAction = .recognize
+                    showPhotoPicker = true
+                }
+            }
+
+            HStack(spacing: 10) {
+                manualActionButton(
+                    title: selectedPhotoData == nil ? "上传照片" : "更换照片",
+                    systemImage: "photo.fill.on.rectangle.fill",
+                    tint: AppTheme.secondary
+                ) {
+                    pendingPhotoAction = .attachOnly
+                    showPhotoPicker = true
+                }
+
+                manualActionButton(
+                    title: "识别并回填",
+                    systemImage: "wand.and.stars.inverse",
+                    tint: AppTheme.accent,
+                    isDisabled: selectedPhotoData == nil || isRecognizing
+                ) {
+                    guard let selectedPhotoData else { return }
+                    Task {
+                        await recognizeAndPrefill(from: selectedPhotoData, source: "当前照片")
+                    }
+                }
+            }
+        }
+        .padding(18)
+        .background(manualCardBackground)
+    }
+
+    private var basicInfoCard: some View {
+        VStack(alignment: .leading, spacing: 16) {
+            Text("基础信息")
+                .font(.system(size: 17, weight: .bold))
+                .foregroundColor(AppTheme.textPrimary)
+
+            VStack(alignment: .leading, spacing: 8) {
+                Text("食物名称")
+                    .font(.system(size: 13, weight: .semibold))
+                    .foregroundColor(AppTheme.textSecondary)
+
+                TextField("例如：米饭、鸡胸肉、酸奶水果碗", text: $foodName)
+                    .appInputFieldStyle(isInvalid: !canSave)
+            }
+
+            VStack(alignment: .leading, spacing: 10) {
+                Text("餐次")
+                    .font(.system(size: 13, weight: .semibold))
+                    .foregroundColor(AppTheme.textSecondary)
+
+                HStack(spacing: 8) {
+                    ForEach(MealType.allCases, id: \.self) { mealType in
+                        Button {
+                            selectedMealType = mealType
+                        } label: {
+                            Text(mealType.chineseDisplayName)
+                                .font(.system(size: 13, weight: .semibold))
+                                .foregroundColor(selectedMealType == mealType ? .white : AppTheme.textPrimary)
+                                .frame(maxWidth: .infinity)
+                                .frame(height: 40)
+                                .background(
+                                    RoundedRectangle(cornerRadius: 14, style: .continuous)
+                                        .fill(selectedMealType == mealType ? AppTheme.primary : Color.white.opacity(0.8))
+                                )
+                        }
+                        .buttonStyle(.plain)
+                    }
+                }
+            }
+
+            VStack(alignment: .leading, spacing: 8) {
+                Text("份量")
+                    .font(.system(size: 13, weight: .semibold))
+                    .foregroundColor(AppTheme.textSecondary)
+
+                HStack(spacing: 12) {
+                    quantityAdjustButton(systemImage: "minus", isEnabled: servingSize > 1) {
+                        servingSize = max(1, servingSize - 10)
+                    }
+
+                    TextField("份量", value: $servingSize, format: .number)
+                        .keyboardType(.decimalPad)
+                        .multilineTextAlignment(.center)
+                        .font(.system(size: 24, weight: .bold))
+                        .appInputFieldStyle()
+                        .onChange(of: servingSize) { newValue in
+                            servingSize = min(9999, max(1, newValue))
+                        }
+
+                    Text("g")
+                        .font(.system(size: 15, weight: .semibold))
+                        .foregroundColor(AppTheme.textSecondary)
+
+                    quantityAdjustButton(systemImage: "plus", isEnabled: servingSize < 9999) {
+                        servingSize = min(9999, servingSize + 10)
+                    }
+                }
+            }
+        }
+        .padding(18)
+        .background(manualCardBackground)
+    }
+
+    private var nutritionCard: some View {
+        VStack(alignment: .leading, spacing: 16) {
+            Text("营养信息")
+                .font(.system(size: 17, weight: .bold))
+                .foregroundColor(AppTheme.textPrimary)
+
+            VStack(spacing: 12) {
+                manualMetricField(title: "热量", value: $calories, unit: "kcal", tint: AppTheme.primary)
+                manualMetricField(title: "蛋白质", value: $protein, unit: "g", tint: AppTheme.info)
+                manualMetricField(title: "脂肪", value: $fat, unit: "g", tint: AppTheme.accent)
+                manualMetricField(title: "碳水", value: $carbs, unit: "g", tint: AppTheme.secondary)
+            }
+        }
+        .padding(18)
+        .background(manualCardBackground)
+    }
+
+    private var saveBar: some View {
+        VStack(spacing: 0) {
+            Rectangle()
+                .fill(Color.black.opacity(0.06))
+                .frame(height: 0.5)
+
+            HStack(spacing: 12) {
+                VStack(alignment: .leading, spacing: 4) {
+                    Text(canSave ? draftFood.name : "请先填写食物名称")
+                        .font(.system(size: 15, weight: .semibold))
+                        .foregroundColor(canSave ? AppTheme.textPrimary : AppTheme.textSecondary)
+                        .lineLimit(1)
+
+                    Text("\(Int(draftFood.servingSize))g · \(selectedMealType.chineseDisplayName)")
+                        .font(.system(size: 12, weight: .medium))
+                        .foregroundColor(AppTheme.textSecondary)
+                }
+
+                Spacer()
+
+                Button {
+                    Task { await save(draftFood) }
+                } label: {
+                    Text("保存记录")
+                        .frame(minWidth: 108)
+                }
+                .disabled(!canSave || isSaving || isRecognizing)
+                .appButtonStyle(kind: .primary, fullWidth: false)
+            }
+            .padding(.horizontal, 16)
+            .padding(.top, 10)
+            .padding(.bottom, 10)
+            .background(tabSafeBackground)
+        }
+    }
+
     @MainActor
     private func save(_ food: RecognizedFood) async {
         isSaving = true
+        errorTitle = "保存失败"
         errorMessage = nil
         progressMessage = "正在保存记录..."
         defer { isSaving = false }
@@ -646,6 +956,66 @@ struct ManualFoodEntrySheet: View {
         }
     }
 
+    private func handlePickedPhoto(_ rawData: Data) {
+        guard let normalizedData = normalizedUploadImageData(from: rawData) else {
+            errorTitle = "图片处理失败"
+            errorMessage = "图片处理失败，请重新选择"
+            return
+        }
+
+        switch pendingPhotoAction {
+        case .attachOnly:
+            selectedPhotoData = normalizedData
+            recognitionBannerMessage = "照片已附加。你可以直接手动填写，也可以点击“识别并回填”体验占位识别。"
+        case .recognize:
+            Task {
+                await recognizeAndPrefill(from: normalizedData, source: "相册照片")
+            }
+        }
+    }
+
+    private func handleCapturedPhoto(_ rawData: Data) {
+        guard let normalizedData = normalizedUploadImageData(from: rawData) else {
+            errorTitle = "图片处理失败"
+            errorMessage = "拍照图片处理失败，请重试"
+            return
+        }
+
+        Task {
+            await recognizeAndPrefill(from: normalizedData, source: "拍照结果")
+        }
+    }
+
+    @MainActor
+    private func recognizeAndPrefill(from photoData: Data, source: String) async {
+        isRecognizing = true
+        errorTitle = "识别失败"
+        errorMessage = nil
+        progressMessage = "正在识别图片..."
+        defer { isRecognizing = false }
+
+        do {
+            let result = try await APIService.shared.recognizeFood(imageData: photoData)
+            selectedPhotoData = photoData
+            applyRecognizedFood(result)
+            recognitionBannerMessage = "已根据\(source)回填占位识别结果，请在保存前核对名称、份量和营养信息。"
+        } catch {
+            errorMessage = error.localizedDescription
+        }
+    }
+
+    private func applyRecognizedFood(_ result: FoodRecognitionResult) {
+        guard let recognized = result.foods.first else { return }
+
+        foodName = recognized.name
+        servingSize = max(1, recognized.servingSize)
+        calories = max(0, recognized.calories)
+        protein = max(0, recognized.protein)
+        fat = max(0, recognized.fat)
+        carbs = max(0, recognized.carbs)
+        selectedMealType = MealType(rawValue: recognized.mealType ?? selectedMealType.rawValue) ?? selectedMealType
+    }
+
     private func normalizedUploadImageData(from data: Data) -> Data? {
         guard let image = UIImage(data: data) else { return nil }
         let maxWidth: CGFloat = 1600
@@ -663,6 +1033,122 @@ struct ManualFoodEntrySheet: View {
         }
         return resizedImage.jpegData(compressionQuality: 0.85)
     }
+
+    @ViewBuilder
+    private func manualActionButton(
+        title: String,
+        systemImage: String,
+        tint: Color,
+        isDisabled: Bool = false,
+        action: @escaping () -> Void
+    ) -> some View {
+        Button(action: action) {
+            HStack(spacing: 8) {
+                Image(systemName: systemImage)
+                    .font(.system(size: 14, weight: .semibold))
+
+                Text(title)
+                    .font(.system(size: 14, weight: .semibold))
+                    .lineLimit(1)
+            }
+            .foregroundColor(isDisabled ? AppTheme.textDisabled : tint)
+            .frame(maxWidth: .infinity)
+            .frame(height: 46)
+            .background(
+                RoundedRectangle(cornerRadius: 16, style: .continuous)
+                    .fill(isDisabled ? Color.white.opacity(0.5) : tint.opacity(0.10))
+            )
+            .overlay(
+                RoundedRectangle(cornerRadius: 16, style: .continuous)
+                    .stroke(isDisabled ? Color.white.opacity(0.6) : tint.opacity(0.16), lineWidth: 1)
+            )
+        }
+        .buttonStyle(.plain)
+        .disabled(isDisabled)
+    }
+
+    @ViewBuilder
+    private func quantityAdjustButton(
+        systemImage: String,
+        isEnabled: Bool,
+        action: @escaping () -> Void
+    ) -> some View {
+        Button(action: action) {
+            ZStack {
+                Circle()
+                    .fill(isEnabled ? AppTheme.primary.opacity(0.12) : Color.white.opacity(0.6))
+                    .frame(width: 38, height: 38)
+
+                Image(systemName: systemImage)
+                    .font(.system(size: 15, weight: .bold))
+                    .foregroundColor(isEnabled ? AppTheme.primary : AppTheme.textDisabled)
+            }
+        }
+        .buttonStyle(.plain)
+        .disabled(!isEnabled)
+    }
+
+    @ViewBuilder
+    private func manualMetricField(
+        title: String,
+        value: Binding<Double>,
+        unit: String,
+        tint: Color
+    ) -> some View {
+        HStack(spacing: 12) {
+            VStack(alignment: .leading, spacing: 4) {
+                Text(title)
+                    .font(.system(size: 14, weight: .semibold))
+                    .foregroundColor(AppTheme.textPrimary)
+
+                Text(unit)
+                    .font(.system(size: 12, weight: .medium))
+                    .foregroundColor(tint)
+            }
+
+            Spacer()
+
+            TextField(title, value: value, format: .number.precision(.fractionLength(1)))
+                .keyboardType(.decimalPad)
+                .multilineTextAlignment(.trailing)
+                .frame(width: 110)
+                .appInputFieldStyle()
+                .onChange(of: value.wrappedValue) { newValue in
+                    value.wrappedValue = max(0, min(9999, newValue))
+                }
+        }
+        .padding(14)
+        .background(
+            RoundedRectangle(cornerRadius: 18, style: .continuous)
+                .fill(Color.white.opacity(0.72))
+        )
+    }
+
+    private var manualCardBackground: some View {
+        RoundedRectangle(cornerRadius: 24, style: .continuous)
+            .fill(Color.white.opacity(0.72))
+            .overlay(
+                RoundedRectangle(cornerRadius: 24, style: .continuous)
+                    .stroke(Color.white.opacity(0.9), lineWidth: 1)
+            )
+            .shadow(color: Color.black.opacity(0.05), radius: 18, x: 0, y: 8)
+    }
+
+    private var tabSafeBackground: Color {
+        Color(
+            uiColor: UIColor(
+                red: 255 / 255,
+                green: 251 / 255,
+                blue: 245 / 255,
+                alpha: 0.98
+            )
+        )
+    }
+}
+
+private enum ManualPhotoAction {
+    case attachOnly
+    case recognize
 }
 
 // MARK: - RecognitionFailedView (Task 17.5)
