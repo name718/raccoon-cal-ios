@@ -51,6 +51,29 @@ struct AppDialogAction {
     }
 }
 
+struct AppBottomSheetActionItem: Identifiable {
+    let id = UUID()
+    let title: String
+    let subtitle: String?
+    let systemImage: String
+    let tintColor: Color
+    let handler: () -> Void
+
+    init(
+        title: String,
+        subtitle: String? = nil,
+        systemImage: String,
+        tintColor: Color = AppTheme.primary,
+        handler: @escaping () -> Void
+    ) {
+        self.title = title
+        self.subtitle = subtitle
+        self.systemImage = systemImage
+        self.tintColor = tintColor
+        self.handler = handler
+    }
+}
+
 struct AppRoundedButtonStyle: ButtonStyle {
     let kind: AppButtonKind
     let fullWidth: Bool
@@ -305,6 +328,130 @@ private struct AppDelayedLoadingOverlayModifier: ViewModifier {
     }
 }
 
+private struct AppBottomSheetModifier: ViewModifier {
+    @Binding var isPresented: Bool
+    let title: String
+    let message: String?
+    let actions: [AppBottomSheetActionItem]
+    let dismissTitle: String
+
+    func body(content: Content) -> some View {
+        ZStack(alignment: .bottom) {
+            content
+                .disabled(isPresented)
+
+            if isPresented {
+                Color.black.opacity(0.14)
+                    .ignoresSafeArea()
+                    .onTapGesture {
+                        dismiss()
+                    }
+                    .transition(.opacity)
+
+                VStack(spacing: 14) {
+                    Capsule()
+                        .fill(Color.white.opacity(0.95))
+                        .frame(width: 42, height: 5)
+                        .padding(.top, 12)
+
+                    VStack(spacing: 8) {
+                        Text(title)
+                            .font(.system(size: 22, weight: .bold))
+                            .foregroundColor(AppTheme.textPrimary)
+
+                        if let message, !message.isEmpty {
+                            Text(message)
+                                .font(.system(size: 14, weight: .medium))
+                                .foregroundColor(AppTheme.textSecondary)
+                                .multilineTextAlignment(.center)
+                                .lineSpacing(2)
+                        }
+                    }
+                    .padding(.horizontal, 24)
+
+                    VStack(spacing: 12) {
+                        ForEach(actions) { action in
+                            Button {
+                                dismiss()
+                                action.handler()
+                            } label: {
+                                HStack(spacing: 14) {
+                                    ZStack {
+                                        RoundedRectangle(cornerRadius: 16, style: .continuous)
+                                            .fill(action.tintColor.opacity(0.14))
+                                            .frame(width: 52, height: 52)
+
+                                        Image(systemName: action.systemImage)
+                                            .font(.system(size: 20, weight: .semibold))
+                                            .foregroundColor(action.tintColor)
+                                    }
+
+                                    VStack(alignment: .leading, spacing: 3) {
+                                        Text(action.title)
+                                            .font(.system(size: 16, weight: .semibold))
+                                            .foregroundColor(AppTheme.textPrimary)
+
+                                        if let subtitle = action.subtitle {
+                                            Text(subtitle)
+                                                .font(.system(size: 13, weight: .medium))
+                                                .foregroundColor(AppTheme.textSecondary)
+                                                .fixedSize(horizontal: false, vertical: true)
+                                        }
+                                    }
+
+                                    Spacer()
+
+                                    Image(systemName: "chevron.right")
+                                        .font(.system(size: 14, weight: .semibold))
+                                        .foregroundColor(AppTheme.textDisabled)
+                                }
+                                .padding(.horizontal, 16)
+                                .padding(.vertical, 14)
+                                .background(
+                                    RoundedRectangle(cornerRadius: 22, style: .continuous)
+                                        .fill(Color.white.opacity(0.9))
+                                        .overlay(
+                                            RoundedRectangle(cornerRadius: 22, style: .continuous)
+                                                .stroke(Color.white.opacity(0.92), lineWidth: 1)
+                                        )
+                                )
+                            }
+                            .buttonStyle(.plain)
+                        }
+                    }
+                    .padding(.horizontal, 20)
+
+                    Button(dismissTitle) {
+                        dismiss()
+                    }
+                    .appButtonStyle(kind: .secondary, fullWidth: true)
+                    .padding(.horizontal, 20)
+                    .padding(.bottom, 12)
+                }
+                .padding(.bottom, 10)
+                .frame(maxWidth: .infinity)
+                .background(
+                    RoundedRectangle(cornerRadius: 32, style: .continuous)
+                        .fill(.ultraThinMaterial)
+                        .overlay(
+                            RoundedRectangle(cornerRadius: 32, style: .continuous)
+                                .stroke(Color.white.opacity(0.9), lineWidth: 1)
+                        )
+                        .ignoresSafeArea(edges: .bottom)
+                )
+                .shadow(color: Color.black.opacity(0.16), radius: 22, x: 0, y: 10)
+                .padding(.horizontal, 10)
+                .transition(.move(edge: .bottom).combined(with: .opacity))
+            }
+        }
+        .animation(.spring(response: 0.3, dampingFraction: 0.86), value: isPresented)
+    }
+
+    private func dismiss() {
+        isPresented = false
+    }
+}
+
 extension View {
     func appButtonStyle(kind: AppButtonKind = .primary, fullWidth: Bool = true) -> some View {
         buttonStyle(AppRoundedButtonStyle(kind: kind, fullWidth: fullWidth))
@@ -344,6 +491,24 @@ extension View {
                 isLoading: isLoading,
                 message: message,
                 delayNanoseconds: delayNanoseconds
+            )
+        )
+    }
+
+    func appBottomSheet(
+        isPresented: Binding<Bool>,
+        title: String,
+        message: String? = nil,
+        actions: [AppBottomSheetActionItem],
+        dismissTitle: String = "取消"
+    ) -> some View {
+        modifier(
+            AppBottomSheetModifier(
+                isPresented: isPresented,
+                title: title,
+                message: message,
+                actions: actions,
+                dismissTitle: dismissTitle
             )
         )
     }

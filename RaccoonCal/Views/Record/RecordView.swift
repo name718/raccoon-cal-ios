@@ -446,16 +446,15 @@ struct RecordView: View {
                 .foregroundColor(AppTheme.textSecondary)
 
             if !isLoading {
-                Text("拍照记录今天的饮食，养成健康好习惯。")
+                Text("添加今天的饮食记录，养成稳定的健康习惯。")
                     .font(.system(size: 13))
                     .foregroundColor(AppTheme.textDisabled)
                     .multilineTextAlignment(.center)
 
-                // 跳转 CameraView（Tab 2）
-                Button(action: { appState.selectedTab = 2 }) {
+                Button(action: { appState.presentAddEntryOptions() }) {
                     HStack(spacing: 6) {
-                        Image(systemName: "camera.fill")
-                        Text("去拍照记录")
+                        Image(systemName: "plus.circle.fill")
+                        Text("去添加记录")
                     }
                     .font(.system(size: 15, weight: .semibold))
                     .foregroundColor(.white)

@@ -512,18 +512,26 @@ extension MealType {
 struct ManualFoodEntrySheet: View {
 
     let initialMealType: MealType
+    let initialFood: RecognizedFood
     var onSaved: ((RecognizedFood) -> Void)? = nil
+    @State private var seedFood: RecognizedFood
+    @State private var selectedPhotoData: Data?
 
     @Environment(\.dismiss) private var dismiss
     @StateObject private var gamificationManager = GamificationManager.shared
     @State private var isSaving = false
     @State private var errorMessage: String? = nil
     @State private var showPhotoPicker = false
-    @State private var selectedPhotoData: Data? = nil
     @State private var progressMessage = "正在保存记录..."
 
-    private var initialFood: RecognizedFood {
-        RecognizedFood(
+    init(
+        initialMealType: MealType,
+        initialFood: RecognizedFood? = nil,
+        initialPhotoData: Data? = nil,
+        onSaved: ((RecognizedFood) -> Void)? = nil
+    ) {
+        self.initialMealType = initialMealType
+        self.initialFood = initialFood ?? RecognizedFood(
             name: "",
             calories: 0,
             protein: 0,
@@ -532,6 +540,9 @@ struct ManualFoodEntrySheet: View {
             servingSize: 100,
             mealType: initialMealType.rawValue
         )
+        self.onSaved = onSaved
+        self._seedFood = State(initialValue: self.initialFood)
+        self._selectedPhotoData = State(initialValue: initialPhotoData)
     }
 
     private var selectedPhotoImage: UIImage? {
@@ -542,7 +553,7 @@ struct ManualFoodEntrySheet: View {
     var body: some View {
         ZStack {
             FoodEditFormView(
-                food: initialFood,
+                food: seedFood,
                 attachmentImage: selectedPhotoImage,
                 onSelectPhoto: {
                     showPhotoPicker = true
@@ -551,6 +562,7 @@ struct ManualFoodEntrySheet: View {
                     selectedPhotoData = nil
                 },
                 onConfirm: { updatedFood in
+                    seedFood = updatedFood
                     Task { await save(updatedFood) }
                 },
                 onCancel: {
@@ -709,14 +721,14 @@ struct RecognitionFailedView: View {
             // Retake photo option
             Button(action: onDismiss) {
                 HStack(spacing: 6) {
-                    Image(systemName: "camera.fill")
+                    Image(systemName: "photo.on.rectangle")
                         .font(.caption)
-                    Text("重新拍照")
+                    Text("重新选择图片")
                         .font(.subheadline)
                 }
                 .foregroundColor(AppTheme.primary)
             }
-            .accessibilityLabel("关闭并重新拍照")
+            .accessibilityLabel("关闭并重新选择图片")
         }
         .frame(maxWidth: .infinity)
         .padding(.vertical, 28)

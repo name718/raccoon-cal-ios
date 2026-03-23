@@ -6,6 +6,7 @@
 import SwiftUI
 import AVFoundation
 import PhotosUI
+import UIKit
 
 // MARK: - CameraSessionController
 
@@ -238,58 +239,127 @@ struct PhotoLibraryPicker: UIViewControllerRepresentable {
 
 // MARK: - CameraView
 
-struct CameraView: View {
+struct ManualFoodDraft: Identifiable {
+    let id = UUID()
+    let mealType: MealType
+    let food: RecognizedFood
+    let photoData: Data?
 
+    static func blank(mealType: MealType = .lunch) -> ManualFoodDraft {
+        ManualFoodDraft(
+            mealType: mealType,
+            food: RecognizedFood(
+                name: "",
+                calories: 0,
+                protein: 0,
+                fat: 0,
+                carbs: 0,
+                servingSize: 100,
+                mealType: mealType.rawValue
+            ),
+            photoData: nil
+        )
+    }
+
+    static func fromRecognition(
+        _ result: FoodRecognitionResult,
+        photoData: Data?,
+        fallbackMealType: MealType = .lunch
+    ) -> ManualFoodDraft {
+        guard let firstFood = result.foods.first else {
+            return blank(mealType: fallbackMealType).copy(photoData: photoData)
+        }
+
+        let resolvedMealType =
+            MealType(rawValue: firstFood.mealType ?? fallbackMealType.rawValue) ??
+            fallbackMealType
+
+        let normalizedFood = RecognizedFood(
+            name: firstFood.name,
+            calories: firstFood.calories,
+            protein: firstFood.protein,
+            fat: firstFood.fat,
+            carbs: firstFood.carbs,
+            servingSize: firstFood.servingSize,
+            mealType: resolvedMealType.rawValue
+        )
+
+        return ManualFoodDraft(
+            mealType: resolvedMealType,
+            food: normalizedFood,
+            photoData: photoData
+        )
+    }
+
+    func copy(photoData: Data?) -> ManualFoodDraft {
+        ManualFoodDraft(
+            mealType: mealType,
+            food: food,
+            photoData: photoData
+        )
+    }
+}
+
+struct CameraView: View {
+    var body: some View {
+        Color.clear
+            .ignoresSafeArea()
+            .accessibilityHidden(true)
+    }
+}
+
+struct AddRecordCameraCaptureView: View {
     @Environment(\.openURL) private var openURL
     @Environment(\.scenePhase) private var scenePhase
 
-    // MARK: - State
+    let onClose: () -> Void
+    let onCaptured: (Data) -> Void
 
     @StateObject private var cameraController = CameraSessionController()
-    @State private var capturedImage: UIImage? = nil
-    @State private var recognitionResult: FoodRecognitionResult? = nil
-    @State private var isLoading: Bool = false
+    @State private var isCapturing = false
     @State private var errorMessage: String? = nil
-    @State private var selectedMealType: String = MealType.lunch.rawValue
-    @State private var showPhotoPicker: Bool = false
-    @State private var showManualEntryEditor: Bool = false
-
-    // MARK: - Body
 
     var body: some View {
         ZStack {
-            // Camera preview (only shown when authorized)
             if shouldShowLiveCameraPreview, let session = cameraController.session {
                 CameraPreviewView(session: session)
                     .ignoresSafeArea()
             } else {
-                // 17.9 — 未授权时展示引导占位视图
                 Color.black.ignoresSafeArea()
                 permissionPlaceholderView
             }
 
-            // Controls overlay (only when authorized)
-            if shouldShowLiveCameraPreview {
-                VStack {
-                    Spacer()
-                    if isLoading {
-                        ProgressView()
-                            .progressViewStyle(CircularProgressViewStyle(tint: .white))
-                            .scaleEffect(1.5)
-                            .padding(.bottom, 48)
-                    } else {
-                        HStack(spacing: 40) {
-                            Button(action: { showPhotoPicker = true }) {
-                                Image(systemName: "photo.on.rectangle")
-                                    .font(.system(size: 28))
-                                    .foregroundColor(.white)
-                                    .frame(width: 52, height: 52)
-                                    .background(Color.black.opacity(0.4))
-                                    .clipShape(Circle())
-                            }
-                            .accessibilityLabel("从相册选取")
+            VStack {
+                HStack {
+                    Button(action: onClose) {
+                        Image(systemName: "xmark")
+                            .font(.system(size: 18, weight: .semibold))
+                            .foregroundColor(.white)
+                            .frame(width: 40, height: 40)
+                            .background(Color.black.opacity(0.35))
+                            .clipShape(Circle())
+                    }
 
-                            Button(action: captureAndUpload) {
+                    Spacer()
+                }
+                .padding(.horizontal, 20)
+                .padding(.top, 16)
+
+                Spacer()
+
+                if shouldShowLiveCameraPreview {
+                    VStack(spacing: 14) {
+                        Text("拍照后会自动进入手动填写页")
+                            .font(.system(size: 14, weight: .medium))
+                            .foregroundColor(.white)
+
+                        if isCapturing {
+                            ProgressView()
+                                .progressViewStyle(CircularProgressViewStyle(tint: .white))
+                                .scaleEffect(1.2)
+                                .padding(.bottom, 48)
+                        } else {
+                            Button(action: capturePhotoAndContinue) {
                                 ZStack {
                                     Circle()
                                         .strokeBorder(Color.white, lineWidth: 4)
@@ -299,40 +369,12 @@ struct CameraView: View {
                                         .frame(width: 58, height: 58)
                                 }
                             }
-                            .accessibilityLabel("拍照")
-
-                            Button(action: { showManualEntryEditor = true }) {
-                                Image(systemName: "square.and.pencil")
-                                    .font(.system(size: 26))
-                                    .foregroundColor(.white)
-                                    .frame(width: 52, height: 52)
-                                    .background(Color.black.opacity(0.4))
-                                    .clipShape(Circle())
-                            }
-                            .accessibilityLabel("手动记录")
+                            .accessibilityLabel("拍照并继续")
+                            .padding(.bottom, 48)
                         }
-                        .padding(.bottom, 48)
                     }
                 }
             }
-        }
-        .sheet(isPresented: $showPhotoPicker) {
-            PhotoLibraryPicker { rawData in
-                Task {
-                    await loadAndUploadPickedPhoto(rawData)
-                }
-            }
-        }
-        .sheet(isPresented: $showManualEntryEditor) {
-            ManualFoodEntrySheet(
-                initialMealType: MealType(rawValue: selectedMealType) ?? .lunch,
-                onSaved: { _ in
-                    showManualEntryEditor = false
-                }
-            )
-        }
-        .sheet(item: $recognitionResult) { result in
-            resultSheetView(for: result)
         }
         .onAppear {
             startSession()
@@ -360,7 +402,7 @@ struct CameraView: View {
                     }
                 }
             ),
-            title: "操作失败",
+            title: "拍照失败",
             message: errorMessage ?? "请稍后重试",
             tone: .error,
             primaryAction: AppDialogAction("确定") {
@@ -369,8 +411,6 @@ struct CameraView: View {
         )
     }
 
-    // MARK: - 17.9 Permission Placeholder View
-
     private var permissionPlaceholderView: some View {
         VStack(spacing: 24) {
             Image("RaccoonThinking")
@@ -378,7 +418,7 @@ struct CameraView: View {
                 .scaledToFit()
                 .frame(width: 120, height: 120)
 
-            Text(simulatorCameraUnavailable ? "模拟器不支持实时相机" : "需要相机权限")
+            Text(simulatorCameraUnavailable ? "当前设备不支持实时相机" : "需要相机权限")
                 .font(.title2)
                 .fontWeight(.semibold)
                 .foregroundColor(.white)
@@ -389,34 +429,21 @@ struct CameraView: View {
                 .multilineTextAlignment(.center)
 
             VStack(spacing: 12) {
-                Button(action: {
-                    showPhotoPicker = true
-                }) {
-                    Label("从相册选择", systemImage: "photo.on.rectangle")
-                }
-                .appButtonStyle(kind: .primary, fullWidth: false)
-
-                Button(action: {
-                    showManualEntryEditor = true
-                }) {
-                    Label("手动记录", systemImage: "square.and.pencil")
-                }
-                .appButtonStyle(kind: .secondary, fullWidth: false)
-
                 if !simulatorCameraUnavailable {
-                    Button(action: {
-                        openAppSettings()
-                    }) {
+                    Button(action: openAppSettings) {
                         Text("去设置")
                     }
-                    .appButtonStyle(kind: .secondary, fullWidth: false)
+                    .appButtonStyle(kind: .primary, fullWidth: false)
                 }
+
+                Button(action: onClose) {
+                    Text("返回")
+                }
+                .appButtonStyle(kind: .secondary, fullWidth: false)
             }
         }
         .padding(32)
     }
-
-    // MARK: - Session Lifecycle (17.9 — permission-aware)
 
     private func startSession() {
         guard !simulatorCameraUnavailable else {
@@ -438,96 +465,22 @@ struct CameraView: View {
         openURL(url)
     }
 
-    // MARK: - Capture & Upload
-
-    private func captureAndUpload() {
-        Task { await performCaptureAndUpload() }
+    private func capturePhotoAndContinue() {
+        Task { await performCapture() }
     }
 
     @MainActor
-    private func performCaptureAndUpload() async {
-        isLoading = true
+    private func performCapture() async {
+        isCapturing = true
         errorMessage = nil
+        defer { isCapturing = false }
 
-        guard let rawData = await capturePhoto() else {
+        guard let rawData = await cameraController.capturePhoto() else {
             errorMessage = "拍照失败，请重试"
-            isLoading = false
             return
         }
 
-        guard let imageData = resizedJpegData(from: rawData, maxWidth: 800, compressionQuality: 0.8) else {
-            errorMessage = "图片处理失败，请重试"
-            isLoading = false
-            return
-        }
-
-        do {
-            let result = try await APIService.shared.recognizeFood(imageData: imageData)
-            recognitionResult = result
-        } catch {
-            errorMessage = error.localizedDescription
-        }
-
-        isLoading = false
-    }
-
-    private func capturePhoto() async -> Data? {
-        await cameraController.capturePhoto()
-    }
-
-    private func resizedJpegData(from data: Data, maxWidth: CGFloat, compressionQuality: CGFloat) -> Data? {
-        guard let image = UIImage(data: data) else { return nil }
-        let originalSize = image.size
-        guard originalSize.width > maxWidth else {
-            return image.jpegData(compressionQuality: compressionQuality)
-        }
-        let scale = maxWidth / originalSize.width
-        let newSize = CGSize(width: maxWidth, height: originalSize.height * scale)
-        let renderer = UIGraphicsImageRenderer(size: newSize)
-        let resized = renderer.image { _ in image.draw(in: CGRect(origin: .zero, size: newSize)) }
-        return resized.jpegData(compressionQuality: compressionQuality)
-    }
-
-    // MARK: - Photo Library
-
-    @MainActor
-    private func loadAndUploadPickedPhoto(_ rawData: Data) async {
-        isLoading = true
-        errorMessage = nil
-
-        guard let imageData = resizedJpegData(from: rawData, maxWidth: 800, compressionQuality: 0.8) else {
-            errorMessage = "图片处理失败，请重试"
-            isLoading = false
-            return
-        }
-
-        do {
-            let result = try await APIService.shared.recognizeFood(imageData: imageData)
-            recognitionResult = result
-        } catch {
-            errorMessage = error.localizedDescription
-        }
-
-        isLoading = false
-    }
-
-    @ViewBuilder
-    private func resultSheetView(for result: FoodRecognitionResult) -> some View {
-        let sheet = FoodResultSheet(
-            result: result,
-            onDismiss: { recognitionResult = nil },
-            onManualEntry: { syntheticResult in
-                recognitionResult = syntheticResult
-            }
-        )
-
-        if #available(iOS 16.0, *) {
-            sheet
-                .presentationDetents([.medium, .large])
-                .presentationDragIndicator(.hidden)
-        } else {
-            sheet
-        }
+        onCaptured(rawData)
     }
 
     private var simulatorCameraUnavailable: Bool {
@@ -546,14 +499,14 @@ struct CameraView: View {
 
     private var permissionDescriptionText: String {
         if simulatorCameraUnavailable {
-            return "当前在 iPhone 模拟器中运行，实时相机能力不可用。\n你可以直接从相册选择图片继续测试。"
+            return "模拟器里不支持拍照。\n请返回后选择“从相册选择”继续。"
         }
-        return "RaccoonCal 需要访问您的相机\n来拍摄食物照片"
+        return "请开启相机权限，拍照后会自动进入手动填写页。"
     }
 }
 
 // MARK: - Preview
 
 #Preview {
-    CameraView()
+    AddRecordCameraCaptureView(onClose: {}, onCaptured: { _ in })
 }
